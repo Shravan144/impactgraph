@@ -83,3 +83,48 @@ def test_inspect_candidates_returns_evidence(monkeypatch):
     assert result["evidence_count"] == 1
     assert result["evidence"][0]["source"] == "workflow.yml"
     assert result["evidence"][0]["relevant_lines"][0]["line"] == 5
+
+
+from claim_matcher import score_evidence, score_evidence_content
+
+
+def test_documentation_build_scores_above_generic_workflow():
+    claim = (
+        "This project uses GitHub Actions "
+        "to automate its documentation build."
+    )
+
+    build_docs_content = """
+    name: Build Docs
+    jobs:
+      build-docs:
+        steps:
+          - uses: actions/checkout@v4
+          - name: Build Docs
+            run: uv run ./scripts/docs.py build-lang
+    """
+
+    generic_workflow_content = """
+    name: Bump pre-commit hooks
+    jobs:
+      update:
+        steps:
+          - uses: actions/checkout@v4
+          - run: pre-commit autoupdate
+    """
+
+    build_score = (
+        score_evidence(claim, ".github/workflows/build-docs.yml")
+        + score_evidence_content(claim, build_docs_content)
+    )
+
+    generic_score = (
+        score_evidence(
+            claim,
+            ".github/workflows/bump-pre-commit-hooks.yml",
+        )
+        + score_evidence_content(claim, generic_workflow_content)
+    )
+
+    assert build_score > generic_score
+    assert build_score >= 20
