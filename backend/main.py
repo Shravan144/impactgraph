@@ -3,6 +3,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from report_finding import generate_report
+from investigation import (
+    InvestigationRequest,
+    collect_candidates,
+    inspect_candidates,
+    store_investigation,
+)
 
 
 app = FastAPI(
@@ -52,3 +58,20 @@ def get_investigation_report(investigation_id: str):
             status_code=404,
             detail=str(exc),
         ) from exc
+
+
+@app.post("/investigations")
+def create_investigation(request: InvestigationRequest):
+    try:
+        candidates = collect_candidates(request)
+        investigation = inspect_candidates(candidates)
+        report = store_investigation(investigation)
+
+        return report
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+

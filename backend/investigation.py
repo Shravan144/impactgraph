@@ -4,6 +4,7 @@ from investigate_claim import inspect_candidate
 
 from claim_matcher import find_candidate_evidence
 from pydantic import BaseModel, Field
+from finding_store import save_finding
 
 
 class InvestigationRequest(BaseModel):
@@ -95,4 +96,58 @@ def inspect_candidates(
         "claim": investigation["claim"],
         "evidence": inspected_evidence,
         "evidence_count": len(inspected_evidence),
+    }
+
+
+def store_investigation(
+    investigation: dict,
+) -> dict:
+    """Store retrieved evidence for human review."""
+
+    evidence = []
+
+    for item in investigation["evidence"]:
+        lines = item.get("relevant_lines", [])
+
+        supporting_lines = ", ".join(
+            str(line["line"]) for line in lines
+        )
+
+        evidence.append({
+            "source": item["source"],
+            "blob_sha": item["blob_sha"],
+            "supporting_lines": supporting_lines,
+        })
+
+    if not evidence:
+        raise ValueError(
+            "No evidence was retrieved; nothing to store."
+        )
+
+    claim_id = (
+        f"claim-{investigation['investigation_id']}"
+    )
+
+    limitations = [
+        "Evidence requires human review.",
+        "Successful runtime execution has not been verified.",
+    ]
+
+    save_finding(
+        investigation_id=investigation["investigation_id"],
+        repository=investigation["repository"],
+        claim_id=claim_id,
+        claim_text=investigation["claim"],
+        verdict="needs_review",
+        evidence=evidence,
+        limitations=limitations,
+    )
+
+    return {
+        "investigation_id": investigation["investigation_id"],
+        "repository": investigation["repository"],
+        "claim": investigation["claim"],
+        "verdict": "needs_review",
+        "evidence_count": len(evidence),
+        "limitations": limitations,
     }

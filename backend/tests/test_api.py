@@ -71,3 +71,53 @@ def test_investigation_not_found(monkeypatch):
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Investigation not found"
+
+
+def test_create_investigation(monkeypatch):
+    expected_result = {
+        "investigation_id": "investigation-test-new",
+        "repository": "fastapi/fastapi",
+        "claim": "The project automates documentation builds",
+        "verdict": "needs_review",
+        "evidence_count": 1,
+        "limitations": ["Evidence requires human review."],
+    }
+
+    def fake_collect_candidates(request):
+        assert request.owner == "fastapi"
+        assert request.repo == "fastapi"
+        return {"candidates": []}
+
+    def fake_inspect_candidates(candidates):
+        return {
+            "investigation_id": "investigation-test-new",
+            "repository": "fastapi/fastapi",
+            "claim": "The project automates documentation builds",
+            "evidence": [{"source": "workflow.yml"}],
+            "evidence_count": 1,
+        }
+
+    def fake_store_investigation(investigation):
+        return expected_result
+
+    monkeypatch.setattr(
+        main, "collect_candidates", fake_collect_candidates
+    )
+    monkeypatch.setattr(
+        main, "inspect_candidates", fake_inspect_candidates
+    )
+    monkeypatch.setattr(
+        main, "store_investigation", fake_store_investigation
+    )
+
+    response = client.post(
+        "/investigations",
+        json={
+            "owner": "fastapi",
+            "repo": "fastapi",
+            "claim": "The project automates documentation builds",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == expected_result
