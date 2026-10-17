@@ -1,0 +1,12 @@
+# Python virtual environment
+backend/.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment variables and secrets
+.env
+
+# Local data
+data/
