@@ -89,6 +89,21 @@ def fetch_file_content(
                 "content": raw_text,
             }
 
+    # 3. Offline verified fixture fallback
+    try:
+        from fixtures_loader import load_repo_fixture
+        fix = load_repo_fixture(f"{owner}/{repo}")
+        if fix and path in fix.get("files", {}):
+            finfo = fix["files"][path]
+            return {
+                "path": path,
+                "sha": finfo.get("blob_sha", "cached_sha"),
+                "size": len(finfo.get("content", "").encode("utf-8")),
+                "content": finfo.get("content", ""),
+            }
+    except Exception:
+        pass
+
     return None
 
 
@@ -98,7 +113,7 @@ def fetch_file_by_path(
     path: str,
     branch: str = "master",
 ) -> dict | None:
-    """Fetch file content directly by repository relative path."""
+    """Fetch file content directly by repository relative path with fixture fallback."""
     raw = fetch_raw_content(owner, repo, path, branch=branch)
     if raw is not None:
         return {
@@ -107,4 +122,17 @@ def fetch_file_by_path(
             "size": len(raw.encode("utf-8")),
             "content": raw,
         }
+    try:
+        from fixtures_loader import load_repo_fixture
+        fix = load_repo_fixture(f"{owner}/{repo}")
+        if fix and path in fix.get("files", {}):
+            finfo = fix["files"][path]
+            return {
+                "path": path,
+                "sha": finfo.get("blob_sha", "cached_sha"),
+                "size": len(finfo.get("content", "").encode("utf-8")),
+                "content": finfo.get("content", ""),
+            }
+    except Exception:
+        pass
     return None

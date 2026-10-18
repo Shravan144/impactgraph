@@ -15,8 +15,10 @@ from graph_algorithms import (
 from mcp_server import handle_json_rpc, handle_tool_call, MCP_TOOLS
 from agent_loop import run_autonomous_investigation_loop
 from fetch_evidence import fetch_file_by_path
+from fixtures_loader import seed_graph_if_empty
 import config
 from ui import UI_HTML
+from contextlib import asynccontextmanager
 from investigation import (
     InvestigationRequest,
     collect_candidates,
@@ -25,11 +27,28 @@ from investigation import (
 )
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Ensure database has initial connected graphs on first startup (e.g. Render / FalkorDB Cloud)."""
+    try:
+        seed_graph_if_empty()
+    except Exception as exc:
+        print(f"Startup graph seeding note: {exc}")
+    yield
+
+
 app = FastAPI(
     title="ImpactGraph API",
     description="Evidence-backed software contribution analysis using FalkorDB",
     version="1.0.0",
+    lifespan=lifespan,
 )
+
+
+@app.post("/api/graph/seed")
+def seed_graph_endpoint():
+    """Seed verified offline repository graphs if FalkorDB is empty or upon request."""
+    return seed_graph_if_empty()
 
 
 class EvidenceItem(BaseModel):
