@@ -33,20 +33,21 @@ def load_repo_fixture(repo_id: str) -> dict[str, Any] | None:
     return fixtures.get(repo_id.lower())
 
 
-def seed_graph_if_empty() -> dict[str, Any]:
+def seed_graph_if_empty(force: bool = False) -> dict[str, Any]:
     """
-    Check if the active FalkorDB instance is empty (e.g. fresh cloud database).
-    If empty, automatically seeds verified repository structures, multi-hop references,
+    Check if the active FalkorDB instance lacks evidence data (e.g. fresh cloud database).
+    If empty or force=True, automatically seeds verified repository structures, multi-hop references,
     and supply-chain dependencies from offline fixtures.
     """
-    try:
-        check_res = execute_query("MATCH (n) RETURN count(n) AS cnt")
-        if check_res and check_res.result_set and check_res.result_set[0][0] > 0:
-            logger.info("FalkorDB already contains data; skipping initial fixture seeding.")
-            return {"status": "skipped", "reason": "database_not_empty"}
-    except Exception as exc:
-        logger.warning(f"Could not verify database emptiness: {exc}")
-        return {"status": "error", "error": str(exc)}
+    if not force:
+        try:
+            check_res = execute_query("MATCH (e:Evidence) RETURN count(e) AS cnt")
+            if check_res and check_res.result_set and check_res.result_set[0][0] > 0:
+                logger.info("FalkorDB already contains evidence; skipping initial fixture seeding.")
+                return {"status": "skipped", "reason": "database_contains_evidence"}
+        except Exception as exc:
+            logger.warning(f"Could not verify database evidence count: {exc}")
+            return {"status": "error", "error": str(exc)}
 
     fixtures = get_all_fixtures()
     if not fixtures:

@@ -46,9 +46,9 @@ app = FastAPI(
 
 
 @app.post("/api/graph/seed")
-def seed_graph_endpoint():
-    """Seed verified offline repository graphs if FalkorDB is empty or upon request."""
-    return seed_graph_if_empty()
+def seed_graph_endpoint(force: bool = False):
+    """Seed verified offline repository graphs if FalkorDB lacks evidence or upon request."""
+    return seed_graph_if_empty(force=force)
 
 
 class EvidenceItem(BaseModel):
