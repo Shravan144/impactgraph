@@ -638,15 +638,46 @@ UI_HTML = """<!DOCTYPE html>
                 <button class="btn-submit" style="width: auto; padding: 0.6rem 1.5rem;" onclick="runCypherQuery()">Execute Cypher</button>
 
                 <div id="cypherResultsWrap" style="margin-top: 1.5rem; display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.85rem; font-weight: 600;">Query Results:</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <span style="font-size: 0.85rem; font-weight: 600;">Query Results:</span>
+                            <div style="display: flex; background: #0f172a; padding: 2px; border-radius: 6px; border: 1px solid var(--border);">
+                                <button id="btnCypherViewTable" class="btn-view-code" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; background: #1e293b; color: #38bdf8;" onclick="toggleCypherView('table')">📋 Table View</button>
+                                <button id="btnCypherViewGraph" class="btn-view-code" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; background: transparent; color: #94a3b8;" onclick="toggleCypherView('graph')">🕸️ Visual Graph Canvas</button>
+                            </div>
+                        </div>
                         <span id="cypherElapsed" style="font-size: 0.75rem; color: #38bdf8; font-family: monospace;"></span>
                     </div>
-                    <div style="max-height: 350px; overflow-y: auto; overflow-x: auto; margin-top: 0.5rem;">
+
+                    <!-- Table View Container -->
+                    <div id="cypherTableContainer" style="max-height: 380px; overflow-y: auto; overflow-x: auto;">
                         <table class="data-table" id="cypherTable">
                             <thead id="cypherThead"></thead>
                             <tbody id="cypherTbody"></tbody>
                         </table>
+                    </div>
+
+                    <!-- Visual Graph Canvas Container -->
+                    <div id="cypherGraphContainer" style="display: none; position: relative;">
+                        <canvas id="cypherCanvas" width="900" height="420" style="width: 100%; height: 420px; background: #070c18; border-radius: 8px; border: 1px solid var(--border); display: block;"></canvas>
+                        <div style="position: absolute; top: 12px; right: 12px; display: flex; gap: 0.5rem; font-size: 0.75rem; flex-wrap: wrap;">
+                            <span style="background: rgba(15,23,42,0.85); padding: 0.25rem 0.6rem; border-radius: 4px; border: 1px solid var(--border); color: #cbd5e1;">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; margin-right:4px;"></span>Evidence / File
+                            </span>
+                            <span style="background: rgba(15,23,42,0.85); padding: 0.25rem 0.6rem; border-radius: 4px; border: 1px solid var(--border); color: #cbd5e1;">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#f59e0b; margin-right:4px;"></span>Dependency
+                            </span>
+                            <span style="background: rgba(15,23,42,0.85); padding: 0.25rem 0.6rem; border-radius: 4px; border: 1px solid var(--border); color: #cbd5e1;">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#3b82f6; margin-right:4px;"></span>Workflow
+                            </span>
+                            <span style="background: rgba(15,23,42,0.85); padding: 0.25rem 0.6rem; border-radius: 4px; border: 1px solid var(--border); color: #cbd5e1;">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#a855f7; margin-right:4px;"></span>Repository
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; font-size: 0.75rem; color: #64748b; font-family: 'JetBrains Mono', monospace;">
+                            <span id="cypherGraphLegendText">Generated from live FalkorDB Cypher query. Drag canvas to pan, scroll to zoom.</span>
+                            <button class="btn-view-code" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;" onclick="resetCypherGraphView()">Center Graph</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1086,9 +1117,192 @@ UI_HTML = """<!DOCTYPE html>
         }
 
         // Cypher Console
+        // Cypher Console
+        let cypherGraphNodes = [];
+        let cypherGraphEdges = [];
+        let cypherPanX = 0, cypherPanY = 0, cypherZoom = 1;
+        let cypherIsDragging = false, cypherStartX = 0, cypherStartY = 0;
+
         function setCypherQuery(q) {
             document.getElementById('cypherInput').value = q;
         }
+
+        function toggleCypherView(view) {
+            const btnTable = document.getElementById('btnCypherViewTable');
+            const btnGraph = document.getElementById('btnCypherViewGraph');
+            const tableContainer = document.getElementById('cypherTableContainer');
+            const graphContainer = document.getElementById('cypherGraphContainer');
+
+            if (view === 'graph') {
+                btnGraph.style.background = '#1e293b';
+                btnGraph.style.color = '#38bdf8';
+                btnTable.style.background = 'transparent';
+                btnTable.style.color = '#94a3b8';
+                tableContainer.style.display = 'none';
+                graphContainer.style.display = 'block';
+                resizeCypherCanvas();
+                drawCypherGraph();
+            } else {
+                btnTable.style.background = '#1e293b';
+                btnTable.style.color = '#38bdf8';
+                btnGraph.style.background = 'transparent';
+                btnGraph.style.color = '#94a3b8';
+                tableContainer.style.display = 'block';
+                graphContainer.style.display = 'none';
+            }
+        }
+
+        function resetCypherGraphView() {
+            cypherPanX = 0; cypherPanY = 0; cypherZoom = 1;
+            drawCypherGraph();
+        }
+
+        function inferCypherNodeType(val) {
+            const v = String(val).toLowerCase();
+            if (v.includes('.yml') || v.includes('.yaml')) return 'workflow';
+            if (v.includes('.py') || v.includes('.ts') || v.includes('.js') || v.includes('.toml') || v.includes('.md')) return 'evidence';
+            if (v.includes('/') && !v.includes('.')) return 'repository';
+            if (v.includes('@') || v.includes('action') || v.length <= 15) return 'dependency';
+            return 'evidence';
+        }
+
+        function initCypherGraphPhysics(nodes, edges) {
+            const cCanvas = document.getElementById('cypherCanvas');
+            const width = cCanvas.width || 800;
+            const height = cCanvas.height || 420;
+
+            cypherGraphNodes = nodes.map((n, i) => {
+                const angle = (i / Math.max(1, nodes.length)) * Math.PI * 2;
+                const radius = Math.min(width, height) * 0.32;
+                return {
+                    ...n,
+                    x: width / 2 + Math.cos(angle) * radius + (Math.random() - 0.5) * 40,
+                    y: height / 2 + Math.sin(angle) * radius + (Math.random() - 0.5) * 40,
+                };
+            });
+            cypherGraphEdges = edges;
+
+            // Relaxation simulation
+            for (let step = 0; step < 45; step++) {
+                for (let i = 0; i < cypherGraphNodes.length; i++) {
+                    for (let j = i + 1; j < cypherGraphNodes.length; j++) {
+                        const dx = cypherGraphNodes[j].x - cypherGraphNodes[i].x;
+                        const dy = cypherGraphNodes[j].y - cypherGraphNodes[i].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        if (dist < 160) {
+                            const force = (160 - dist) * 0.025;
+                            cypherGraphNodes[i].x -= (dx / dist) * force;
+                            cypherGraphNodes[i].y -= (dy / dist) * force;
+                            cypherGraphNodes[j].x += (dx / dist) * force;
+                            cypherGraphNodes[j].y += (dy / dist) * force;
+                        }
+                    }
+                }
+            }
+            drawCypherGraph();
+        }
+
+        function drawCypherGraph() {
+            const cCanvas = document.getElementById('cypherCanvas');
+            if (!cCanvas) return;
+            const cCtx = cCanvas.getContext('2d');
+            cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+            cCtx.save();
+            cCtx.translate(cypherPanX, cypherPanY);
+            cCtx.scale(cypherZoom, cypherZoom);
+
+            const nodeMap = new Map(cypherGraphNodes.map(n => [n.id, n]));
+
+            // Draw edges with arrowheads
+            cypherGraphEdges.forEach(e => {
+                const s = nodeMap.get(e.source);
+                const t = nodeMap.get(e.target);
+                if (s && t) {
+                    cCtx.beginPath();
+                    cCtx.moveTo(s.x, s.y);
+                    cCtx.lineTo(t.x, t.y);
+
+                    if (e.type && e.type.includes('REFERENCE')) {
+                        cCtx.strokeStyle = '#38bdf8';
+                        cCtx.lineWidth = 1.8;
+                    } else if (e.type && e.type.includes('DEPENDENCY')) {
+                        cCtx.strokeStyle = '#f59e0b';
+                        cCtx.lineWidth = 1.5;
+                    } else {
+                        cCtx.strokeStyle = '#334155';
+                        cCtx.lineWidth = 1.2;
+                    }
+                    cCtx.stroke();
+
+                    // Edge label if space permits
+                    if (e.type && cypherGraphEdges.length < 15) {
+                        const mx = (s.x + t.x) / 2;
+                        const my = (s.y + t.y) / 2;
+                        cCtx.fillStyle = '#64748b';
+                        cCtx.font = '9px JetBrains Mono';
+                        cCtx.fillText(e.type, mx - 15, my - 4);
+                    }
+                }
+            });
+
+            // Draw nodes
+            cypherGraphNodes.forEach(n => {
+                cCtx.beginPath();
+                const radius = n.type === 'repository' ? 14 : 9;
+                cCtx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+
+                if (n.type === 'repository') cCtx.fillStyle = '#a855f7';
+                else if (n.type === 'workflow') cCtx.fillStyle = '#3b82f6';
+                else if (n.type === 'dependency') cCtx.fillStyle = '#f59e0b';
+                else cCtx.fillStyle = '#10b981';
+
+                cCtx.fill();
+                cCtx.strokeStyle = '#ffffff';
+                cCtx.lineWidth = 1.2;
+                cCtx.stroke();
+
+                // Text label
+                cCtx.fillStyle = '#e2e8f0';
+                cCtx.font = '10px JetBrains Mono';
+                const label = (n.label || '').split('/').pop();
+                cCtx.fillText(label.slice(0, 20), n.x + 12, n.y + 4);
+            });
+
+            cCtx.restore();
+        }
+
+        function resizeCypherCanvas() {
+            const cCanvas = document.getElementById('cypherCanvas');
+            if (cCanvas && cCanvas.parentElement) {
+                cCanvas.width = cCanvas.parentElement.clientWidth || 900;
+                cCanvas.height = 420;
+            }
+        }
+
+        // Setup mouse listeners for Cypher Canvas
+        window.addEventListener('DOMContentLoaded', () => {
+            const cCanvas = document.getElementById('cypherCanvas');
+            if (!cCanvas) return;
+            cCanvas.addEventListener('mousedown', e => {
+                cypherIsDragging = true;
+                cypherStartX = e.clientX - cypherPanX;
+                cypherStartY = e.clientY - cypherPanY;
+            });
+            window.addEventListener('mousemove', e => {
+                if (cypherIsDragging) {
+                    cypherPanX = e.clientX - cypherStartX;
+                    cypherPanY = e.clientY - cypherStartY;
+                    drawCypherGraph();
+                }
+            });
+            window.addEventListener('mouseup', () => { cypherIsDragging = false; });
+            cCanvas.addEventListener('wheel', e => {
+                e.preventDefault();
+                const factor = e.deltaY < 0 ? 1.1 : 0.9;
+                cypherZoom = Math.min(Math.max(0.4, cypherZoom * factor), 2.5);
+                drawCypherGraph();
+            });
+        });
 
         async function runCypherQuery() {
             const cypher = document.getElementById('cypherInput').value.trim();
@@ -1133,6 +1347,44 @@ UI_HTML = """<!DOCTYPE html>
 
                 if (data.result_set.length === 0) {
                     tbody.innerHTML = '<tr><td style="color:#94a3b8;" colspan="5">Query returned 0 rows.</td></tr>';
+                }
+
+                // Dynamic Visual Graph Extraction
+                const nodesMap = new Map();
+                const edgesList = [];
+                const colCount = headers.length;
+
+                data.result_set.forEach(row => {
+                    if (colCount >= 2) {
+                        const srcVal = String(row[0] || '').trim();
+                        const tgtVal = colCount >= 3 ? String(row[2] || '').trim() : String(row[1] || '').trim();
+                        const relType = colCount >= 3 ? String(row[1] || '').trim() : 'CONNECTED';
+
+                        if (srcVal && tgtVal && isNaN(Number(srcVal)) && isNaN(Number(tgtVal)) && !srcVal.startsWith('[') && !tgtVal.startsWith('[')) {
+                            if (!nodesMap.has(srcVal)) {
+                                nodesMap.set(srcVal, { id: srcVal, label: srcVal, type: inferCypherNodeType(srcVal) });
+                            }
+                            if (!nodesMap.has(tgtVal)) {
+                                nodesMap.set(tgtVal, { id: tgtVal, label: tgtVal, type: inferCypherNodeType(tgtVal) });
+                            }
+                            edgesList.push({ source: srcVal, target: tgtVal, type: relType });
+                        }
+                    }
+                });
+
+                const btnGraph = document.getElementById('btnCypherViewGraph');
+                if (edgesList.length > 0) {
+                    btnGraph.textContent = `🕸️ Visual Graph Canvas (${edgesList.length} edges)`;
+                    btnGraph.style.borderColor = '#38bdf8';
+                    initCypherGraphPhysics(Array.from(nodesMap.values()), edgesList);
+                    document.getElementById('cypherGraphLegendText').textContent =
+                        `Visualized ${nodesMap.size} nodes and ${edgesList.length} connected edges directly from your Cypher result.`;
+                    // Automatically switch to graph view for relationship queries!
+                    toggleCypherView('graph');
+                } else {
+                    btnGraph.textContent = `🕸️ Visual Graph Canvas (0 edges)`;
+                    btnGraph.style.borderColor = 'var(--border)';
+                    toggleCypherView('table');
                 }
             } catch (err) { alert("Cypher query error: " + err); }
         }
