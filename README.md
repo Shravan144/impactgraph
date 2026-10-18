@@ -5,9 +5,11 @@
 > **Hackathon Submission:** [Graph Hacks — WeMakeDevs × FalkorDB](https://www.wemakedevs.org/hackathons/falkordb)  
 > **Track:** **Agents That Act on Connected Data**  
 > **Mandatory Sponsor Technology:** **FalkorDB** (Graph Database & Vector/Graph Traversal Engine)  
+> **Live Cloud Deployment:** [https://impactgraph-g0d1.onrender.com/](https://impactgraph-g0d1.onrender.com/)  
+> **Cloud Database:** FalkorDB Cloud (`ap-south-1`)  
 > **Model Context Protocol (MCP):** Native MCP Server (`/mcp` endpoint and `mcp_server.py`)  
 > **Demo Video:** [Watch Demo Video (Placeholder)](https://youtu.be/placeholder-impactgraph-demo)  
-> **Interactive Dashboard:** `http://localhost:8000/` or `http://localhost:8000/ui`
+> **Interactive Dashboard:** `https://impactgraph-g0d1.onrender.com/` (or local `http://localhost:8000/`)
 
 ---
 
