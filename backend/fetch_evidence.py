@@ -1,16 +1,36 @@
-
 import base64
-
+import logging
 import httpx
+from ingest_github import GITHUB_API, get_github_headers
+import config
 
-from ingest_github import fetch_repository, fetch_file_tree
-from select_files import select_candidate_files
+logger = logging.getLogger("impactgraph.fetch_evidence")
+MAX_CONTENT_SIZE = config.MAX_FILE_SIZE
 
 
-GITHUB_API = "https://api.github.com"
-MAX_CONTENT_SIZE = 200_000
-MAX_FILES_TO_FETCH = 5
-MAX_FILES_TO_ATTEMPT = 10
+def fetch_raw_content(owner: str, repo: str, path: str, branch: str = "master") -> str | None:
+    """Fallback fetch via raw.githubusercontent.com which avoids REST API rate limits."""
+    clean_path = path.lstrip("/")
+    branches = [branch]
+    if "master" not in branches:
+        branches.append("master")
+    if "main" not in branches:
+        branches.append("main")
+
+    for br in branches:
+        url = f"https://raw.githubusercontent.com/{owner}/{repo}/{br}/{clean_path}"
+        try:
+            response = httpx.get(
+                url,
+                headers={"User-Agent": "ImpactGraph-Agent"},
+                timeout=4.0,
+                follow_redirects=True,
+            )
+            if response.status_code == 200:
+                return response.text
+        except Exception:
+            continue
+    return None
 
 
 def fetch_file_content(
@@ -18,97 +38,73 @@ def fetch_file_content(
     repo: str,
     file: dict,
 ) -> dict | None:
-    """Fetch one small GitHub file without executing its contents."""
+    """Fetch one small GitHub file blob without executing its contents."""
 
-    if file["type"] != "blob":
+    if file.get("type") != "blob":
         return None
 
     size = file.get("size")
-
-    if size is None or size <= 0 or size > MAX_CONTENT_SIZE:
+    if size is not None and (size <= 0 or size > MAX_CONTENT_SIZE):
         return None
 
+    path = file.get("path", "")
     sha = file.get("sha")
 
-    if not sha:
-        return None
-
-    url = f"{GITHUB_API}/repos/{owner}/{repo}/git/blobs/{sha}"
-
-    response = httpx.get(
-        url,
-        headers={"Accept": "application/vnd.github+json"},
-        timeout=20.0,
-    )
-    response.raise_for_status()
-
-    blob = response.json()
-
-    if blob.get("encoding") != "base64":
-        raise ValueError(f"Unexpected encoding for {file['path']}")
-
-    encoded_content = "".join(blob["content"].split())
-    content_bytes = base64.b64decode(encoded_content, validate=True)
-
-    # GitHub's blob size is the size of the original file.
-    if len(content_bytes) != size:
-        raise ValueError(f"Size mismatch for {file['path']}")
-
-    try:
-        content = content_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        return None
-
-    return {
-        "path": file["path"],
-        "sha": sha,
-        "size": size,
-        "content": content,
-    }
-
-
-
-if __name__ == "__main__":
-    owner = "fastapi"
-    repo = "fastapi"
-
-    repository = fetch_repository(owner, repo)
-    tree = fetch_file_tree(
-        owner,
-        repo,
-        repository["default_branch"],
-    )
-
-    candidates = select_candidate_files(tree)
-
-    fetched = 0
-    attempted = 0
-
-    for file in candidates:
-        if fetched >= MAX_FILES_TO_FETCH:
-            break
-
-        if attempted >= MAX_FILES_TO_ATTEMPT:
-            break
-
-        attempted += 1
-
+    # 1. Try official GitHub REST Blobs API if token is provided or available
+    if sha and config.GITHUB_TOKEN:
+        url = f"{GITHUB_API}/repos/{owner}/{repo}/git/blobs/{sha}"
         try:
-            evidence = fetch_file_content(owner, repo, file)
+            response = httpx.get(
+                url,
+                headers=get_github_headers(),
+                timeout=5.0,
+                follow_redirects=True,
+            )
+            if response.status_code == 200:
+                blob = response.json()
+                if blob.get("encoding") == "base64":
+                    encoded_content = "".join(blob["content"].split())
+                    content_bytes = base64.b64decode(encoded_content, validate=True)
+                    try:
+                        content = content_bytes.decode("utf-8")
+                    except UnicodeDecodeError:
+                        content = content_bytes.decode("latin-1", errors="replace")
+                    return {
+                        "path": path,
+                        "sha": sha,
+                        "size": len(content_bytes),
+                        "content": content,
+                    }
+        except Exception as exc:
+            logger.debug(f"GitHub Blobs API fetch failed for {path}: {exc}")
 
-            if evidence is None:
-                continue
+    # 2. Resilient Fast Fallback: raw.githubusercontent.com
+    if path:
+        raw_text = fetch_raw_content(owner, repo, path)
+        if raw_text is not None:
+            return {
+                "path": path,
+                "sha": sha or "raw_fallback_sha",
+                "size": len(raw_text.encode("utf-8")),
+                "content": raw_text,
+            }
 
-            print(f"\nFile: {evidence['path']}")
-            print(f"Git blob SHA: {evidence['sha']}")
-            print(f"Size: {evidence['size']} bytes")
-            print("Content preview:")
-            print(evidence["content"][:500])
+    return None
 
-            fetched += 1
 
-        except (httpx.HTTPError, ValueError) as exc:
-            print(f"Could not fetch {file['path']}: {exc}")
-
-    print(f"\nAttempted: {attempted}")
-    print(f"Successfully fetched: {fetched}")
+def fetch_file_by_path(
+    owner: str,
+    repo: str,
+    path: str,
+    branch: str = "master",
+) -> dict | None:
+    """Fetch file content directly by repository relative path."""
+    raw = fetch_raw_content(owner, repo, path, branch=branch)
+    if raw is not None:
+        return {
+            "path": path,
+            "sha": "raw_sha",
+            "size": len(raw.encode("utf-8")),
+            "content": raw,
+        }
+    return None

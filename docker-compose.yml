@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  impactgraph-db:
+    image: falkordb/falkordb:latest
+    container_name: impactgraph-db
+    ports:
+      - "6379:6379"
+      - "3000:3000"
+    restart: unless-stopped
+    volumes:
+      - falkordb_data:/var/lib/falkordb/data
+
+  impactgraph-agent:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: impactgraph-agent
+    ports:
+      - "8000:8000"
+    environment:
+      - FALKORDB_HOST=impactgraph-db
+      - FALKORDB_PORT=6379
+      - FALKORDB_GRAPH=ImpactGraph
+      # Optional: set your OpenRouter or GitHub tokens here or in a .env file
+      # - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      # - GITHUB_TOKEN=${GITHUB_TOKEN}
+    depends_on:
+      - impactgraph-db
+    restart: unless-stopped
+
+volumes:
+  falkordb_data:

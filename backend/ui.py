@@ -1,0 +1,1221 @@
+UI_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImpactGraph — Autonomous Connected Data Agent (FalkorDB)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #090d16;
+            --surface: #101626;
+            --surface-hover: #1b2438;
+            --border: #23304a;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --primary-glow: rgba(59, 130, 246, 0.25);
+            --falkor-orange: #ff5722;
+            --falkor-glow: rgba(255, 87, 34, 0.25);
+            --text-main: #f9fafb;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #06b6d4;
+            --purple: #a855f7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: rgba(16, 22, 38, 0.85);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.85rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-wrap { display: flex; align-items: center; gap: 0.75rem; }
+        .logo-icon {
+            width: 42px; height: 42px;
+            background: linear-gradient(135deg, var(--primary), var(--falkor-orange));
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 1.35rem; color: white;
+            box-shadow: 0 0 25px var(--primary-glow);
+        }
+        .logo-text h1 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; }
+        .logo-text span { font-size: 0.75rem; color: var(--text-muted); display: block; }
+
+        .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+        .btn-settings {
+            background: #1e293b; border: 1px solid #334155; color: #cbd5e1;
+            padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.8rem;
+            font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;
+            transition: all 0.2s;
+        }
+        .btn-settings:hover { background: #334155; color: white; border-color: var(--primary); }
+
+        .badge {
+            font-size: 0.75rem; padding: 0.35rem 0.8rem;
+            border-radius: 9999px; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 0.4rem;
+        }
+        .badge-falkordb { background: rgba(255, 87, 34, 0.15); border: 1px solid var(--falkor-orange); color: #ff784e; }
+        .badge-track { background: rgba(59, 130, 246, 0.15); border: 1px solid var(--primary); color: #60a5fa; }
+        .badge-pulse { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 10px var(--success); }
+
+        /* Nav Tabs */
+        .tabs-nav {
+            display: flex; gap: 0.5rem; max-width: 1350px; margin: 1.5rem auto 0;
+            padding: 0 1.5rem; border-bottom: 1px solid var(--border);
+        }
+        .tab-btn {
+            background: transparent; border: none; color: var(--text-muted);
+            padding: 0.75rem 1.25rem; font-size: 0.9rem; font-weight: 600;
+            cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;
+        }
+        .tab-btn.active { color: #60a5fa; border-bottom-color: var(--primary); }
+        .tab-btn:hover:not(.active) { color: white; }
+
+        main { max-width: 1350px; margin: 1.5rem auto 3rem; padding: 0 1.5rem; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .hero { text-align: center; margin-bottom: 2rem; }
+        .hero h2 {
+            font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #ffffff 40%, #94a3b8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        .hero p { color: var(--text-muted); font-size: 1.05rem; max-width: 820px; margin: 0 auto; }
+
+        .stats-strip {
+            display: flex; gap: 1.5rem; background: var(--surface);
+            border: 1px solid var(--border); border-radius: 12px;
+            padding: 0.85rem 1.5rem; margin-bottom: 2rem; font-size: 0.85rem;
+            color: var(--text-muted); justify-content: center; flex-wrap: wrap;
+        }
+        .stat-value { font-weight: 700; color: var(--text-main); }
+
+        .grid-layout { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 2rem; margin-bottom: 2rem; }
+        @media (max-width: 1000px) { .grid-layout { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 1.6rem;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+        }
+        .card-title {
+            font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .form-group { margin-bottom: 1.25rem; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; color: #d1d5db; margin-bottom: 0.4rem; }
+        .repo-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        input[type="text"], textarea, select {
+            width: 100%; background: #090e1a; border: 1px solid var(--border);
+            border-radius: 8px; padding: 0.7rem 0.85rem; color: white;
+            font-size: 0.9rem; font-family: inherit; transition: all 0.2s;
+        }
+        input[type="text"]:focus, textarea:focus, select:focus {
+            outline: none; border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow);
+        }
+        textarea { resize: vertical; min-height: 85px; }
+
+        .presets { margin-top: 0.75rem; }
+        .presets-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem; display: block; }
+        .preset-btn {
+            background: #172136; border: 1px solid #2d3e5e; color: #cbd5e1;
+            padding: 0.35rem 0.65rem; border-radius: 6px; font-size: 0.78rem;
+            cursor: pointer; margin-right: 0.4rem; margin-bottom: 0.4rem; transition: all 0.15s;
+        }
+        .preset-btn:hover { background: #233352; color: white; border-color: var(--primary); }
+
+        .btn-submit {
+            width: 100%; background: linear-gradient(135deg, var(--primary), #1d4ed8);
+            border: none; color: white; padding: 0.9rem; border-radius: 10px;
+            font-weight: 700; font-size: 1.05rem; cursor: pointer;
+            box-shadow: 0 4px 18px var(--primary-glow); transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem;
+        }
+        .btn-submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(59, 130, 246, 0.4); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* ReAct Trace Visualizer */
+        .trace-container { display: flex; flex-direction: column; gap: 0.75rem; max-height: 420px; overflow-y: auto; padding-right: 0.5rem; }
+        .trace-step {
+            background: #090e1a; border: 1px solid var(--border); border-radius: 10px;
+            padding: 0.85rem 1rem; font-size: 0.85rem; transition: all 0.3s;
+        }
+        .trace-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem; }
+        .trace-pill {
+            font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            padding: 0.18rem 0.55rem; border-radius: 5px;
+        }
+        .trace-thought { color: #94a3b8; font-style: italic; margin-bottom: 0.3rem; }
+        .trace-action { color: #38bdf8; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; margin-bottom: 0.2rem; }
+        .trace-obs { color: #34d399; font-size: 0.82rem; }
+
+        /* Graph Canvas Container */
+        .graph-viz-card { margin-bottom: 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.6rem; }
+        .canvas-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+        .canvas-wrap {
+            position: relative; width: 100%; height: 460px;
+            background: radial-gradient(circle at center, #111a2e 0%, #060911 100%);
+            border: 1px solid #1e293b; border-radius: 10px; overflow: hidden;
+            cursor: grab;
+        }
+        .canvas-wrap:active { cursor: grabbing; }
+        canvas { width: 100%; height: 100%; display: block; }
+        .graph-legend {
+            display: flex; gap: 1.25rem; margin-top: 0.75rem; font-size: 0.78rem;
+            color: var(--text-muted); justify-content: center; flex-wrap: wrap;
+        }
+        .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        /* Results Display */
+        .results-section { display: none; margin-top: 2rem; }
+        .verdict-banner {
+            padding: 1.4rem 1.6rem; border-radius: 14px; margin-bottom: 1.5rem;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+        }
+        .verdict-supported { background: rgba(16, 185, 129, 0.12); border: 1px solid var(--success); }
+        .verdict-partially_supported { background: rgba(245, 158, 11, 0.12); border: 1px solid var(--warning); }
+        .verdict-contradicted { background: rgba(239, 68, 68, 0.12); border: 1px solid var(--danger); }
+        .verdict-insufficient_evidence { background: rgba(6, 182, 212, 0.12); border: 1px solid var(--info); }
+
+        .verdict-title { font-size: 1.45rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
+        .verdict-pill {
+            padding: 0.3rem 0.85rem; border-radius: 9999px;
+            font-size: 0.82rem; font-weight: 700; text-transform: uppercase;
+        }
+        .pill-supported { background: var(--success); color: black; }
+        .pill-partially_supported { background: var(--warning); color: black; }
+        .pill-contradicted { background: var(--danger); color: white; }
+        .pill-insufficient_evidence { background: var(--info); color: black; }
+
+        .rationale-box {
+            font-size: 1.02rem; color: #e2e8f0; margin-bottom: 1.5rem;
+            background: #090e1a; padding: 1.1rem 1.35rem; border-radius: 10px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .graph-paths-box {
+            background: #090e1a; border: 1px solid #1e293b;
+            border-radius: 10px; padding: 1.1rem 1.35rem; margin-bottom: 1.5rem;
+        }
+        .graph-path-tag {
+            display: inline-block; background: #172136; border: 1px solid #2d3e5e;
+            color: #38bdf8; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+            padding: 0.35rem 0.65rem; border-radius: 6px; margin: 0.3rem 0.3rem 0.3rem 0;
+        }
+
+        .evidence-card {
+            background: #090e1a; border: 1px solid var(--border);
+            border-radius: 10px; margin-bottom: 1rem; overflow: hidden;
+        }
+        .evidence-header {
+            padding: 0.85rem 1.1rem; background: #141c2e; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+        }
+        .btn-view-code {
+            background: #1e293b; border: 1px solid #334155; color: #38bdf8;
+            padding: 0.25rem 0.6rem; border-radius: 5px; font-size: 0.78rem;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .btn-view-code:hover { background: #334155; color: white; }
+
+        .evidence-body {
+            padding: 1rem 1.1rem; font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem; line-height: 1.6; background: #060911; overflow-x: auto;
+        }
+        .code-line.highlight {
+            color: #38bdf8; background: rgba(56, 189, 248, 0.1);
+            border-left: 3px solid #38bdf8; padding-left: 0.5rem; font-weight: 500;
+        }
+
+        .limitations-box {
+            background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.25);
+            border-radius: 10px; padding: 1.1rem; margin-top: 1.5rem; font-size: 0.85rem; color: #fbbf24;
+        }
+
+        /* Slide-Out Code Drawer */
+        .drawer-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px);
+            z-index: 100; display: none;
+        }
+        .drawer {
+            position: fixed; top: 0; right: -650px; width: 620px; max-width: 90vw; height: 100vh;
+            background: #090e1a; border-left: 1px solid var(--border);
+            z-index: 101; display: flex; flex-direction: column; transition: right 0.3s ease-out;
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.6);
+        }
+        .drawer.open { right: 0; }
+        .drawer-header {
+            padding: 1.25rem 1.5rem; background: #101626; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .drawer-body {
+            flex: 1; padding: 1.25rem 1.5rem; overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.6;
+        }
+        .code-table { width: 100%; border-collapse: collapse; }
+        .code-table td { padding: 0.1rem 0.5rem; vertical-align: top; }
+        .code-line-no { color: #475569; user-select: none; text-align: right; width: 40px; }
+        .code-line-text { white-space: pre-wrap; word-break: break-all; }
+        .code-line-highlighted { background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600; }
+
+        /* Settings Modal */
+        .modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 520px; max-width: 92vw; background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 2rem; z-index: 105; display: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Centrality & Cypher Tables */
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.85rem; }
+        .data-table th, .data-table td { padding: 0.6rem 0.85rem; text-align: left; border-bottom: 1px solid #1e293b; }
+        .data-table th { color: #94a3b8; font-weight: 600; background: #0c1220; }
+
+        footer {
+            text-align: center; padding: 3rem; color: var(--text-muted);
+            font-size: 0.85rem; border-top: 1px solid var(--border); margin-top: 5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-wrap">
+            <div class="logo-icon">⚡</div>
+            <div class="logo-text">
+                <h1>ImpactGraph</h1>
+                <span>Autonomous Connected Data Agent Powered by FalkorDB</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-settings" onclick="openSettingsModal()">
+                ⚙️ <span id="llmIndicatorText">LLM Settings</span>
+            </button>
+            <div class="badge badge-falkordb">
+                <span class="badge-pulse"></span> FalkorDB Engine
+            </div>
+            <div class="badge badge-track">
+                Track: Agents That Act on Connected Data
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('tab-investigate')">🚀 Autonomous Agent</button>
+        <button class="tab-btn" onclick="switchTab('tab-cypher')">💻 Cypher Console</button>
+        <button class="tab-btn" onclick="switchTab('tab-mcp')">🔌 MCP Tools (Model Context Protocol)</button>
+        <button class="tab-btn" onclick="switchTab('tab-centrality')">📊 Architecture Hubs</button>
+    </div>
+
+    <main>
+        <!-- TAB 1: Autonomous Agent Investigation -->
+        <div id="tab-investigate" class="tab-content active">
+            <div class="hero">
+                <h2>Autonomous Multi-Hop Graph Investigation</h2>
+                <p>Decomposes claims into verifiable checkpoints, traverses multi-hop edges in FalkorDB, validates live CI runtime telemetry, and cites verified source lines.</p>
+            </div>
+
+            <div id="statsStrip" class="stats-strip">
+                <div>Graph: <span id="statGraphName" class="stat-value">ImpactGraph</span></div>
+                <div>FalkorDB Nodes: <span id="statNodes" class="stat-value">...</span></div>
+                <div>Connected Relationships: <span id="statEdges" class="stat-value">...</span></div>
+                <div>Active Reasoning Engine: <span id="statEngine" class="stat-value" style="color:#60a5fa;">Deterministic + LLM Hybrid</span></div>
+            </div>
+
+            <!-- Interactive Force-Directed Graph -->
+            <div class="graph-viz-card">
+                <div class="canvas-toolbar">
+                    <span class="card-title" style="margin: 0;">FalkorDB Connected Evidence Subgraph</span>
+                    <div>
+                        <button class="btn-view-code" onclick="resetGraphPhysics()">Reset Layout</button>
+                        <button class="btn-view-code" onclick="loadSubgraph(document.getElementById('ownerInput').value + '/' + document.getElementById('repoInput').value)">Reload Graph</button>
+                    </div>
+                </div>
+                <div class="canvas-wrap" id="canvasWrap">
+                    <canvas id="graphCanvas"></canvas>
+                </div>
+                <div class="graph-legend">
+                    <div class="legend-item"><span class="legend-dot" style="background: #a855f7;"></span> Repository</div>
+                    <div class="legend-item"><span class="legend-dot" style="background: #3b82f6;"></span> Workflow / Config</div>
+                    <div class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> Script / Source</div>
+                    <div class="legend-item"><span class="legend-dot" style="background: #f59e0b;"></span> Dependency / Action</div>
+                    <div class="legend-item"><span class="legend-dot" style="background: #ef4444; border: 2px solid white;"></span> Traversed by Agent</div>
+                </div>
+            </div>
+
+            <div class="grid-layout">
+                <!-- Left: Form -->
+                <div class="card">
+                    <div class="card-title">
+                        <span>Launch Investigation</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Self-Healing Ingestion</span>
+                    </div>
+                    <form id="investigateForm">
+                        <div class="form-group">
+                            <label>Public GitHub Repository</label>
+                            <div class="repo-inputs">
+                                <input type="text" id="ownerInput" placeholder="owner" value="fastapi" required>
+                                <input type="text" id="repoInput" placeholder="repo" value="fastapi" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Claim to Investigate</label>
+                            <textarea id="claimInput" required>This project uses GitHub Actions to automate its documentation build.</textarea>
+                        </div>
+
+                        <div class="presets">
+                            <span class="presets-label">Evaluation Test Presets:</span>
+                            <button type="button" class="preset-btn" onclick="setPreset('fastapi', 'fastapi', 'This project uses GitHub Actions to automate its documentation build.')">FastAPI Docs Build (Supported)</button>
+                            <button type="button" class="preset-btn" onclick="setPreset('fastapi', 'fastapi', 'This project runs pre-commit hooks to automate repository maintenance.')">FastAPI Pre-commit (Supported)</button>
+                            <button type="button" class="preset-btn" onclick="setPreset('pallets', 'flask', 'Flask uses GitHub Actions for continuous integration testing.')">Flask CI Testing (pallets/flask)</button>
+                            <button type="button" class="preset-btn" onclick="setPreset('fastapi', 'fastapi', 'This project uses CircleCI for Docker container deployment.')">FastAPI CircleCI (Contradicted / Insufficient)</button>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="btn-submit">
+                            <span id="btnIcon">⚡</span> <span id="btnText">Launch Autonomous Agent</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Right: ReAct Trace -->
+                <div class="card">
+                    <div class="card-title">
+                        <span>Autonomous ReAct Trace</span>
+                        <span id="liveStatusPill" class="badge" style="background:#172136; color:#94a3b8;">Idle</span>
+                    </div>
+                    <div id="traceContainer" class="trace-container">
+                        <p style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
+                            Click "Launch Autonomous Agent" to watch the agent execute Thought ➔ Action ➔ Observation cycles across FalkorDB.
+                        </p>
+                    </div>
+
+                    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                        <label style="font-size: 0.8rem;">Recall Historical Investigation by ID:</label>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
+                            <input type="text" id="lookupIdInput" placeholder="investigation-..." style="padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+                            <button type="button" class="preset-btn" style="margin: 0;" onclick="lookupInvestigation()">Recall</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="results-section">
+                <div id="verdictBanner" class="verdict-banner">
+                    <div>
+                        <div class="verdict-title">
+                            <span id="verdictIcon">✅</span>
+                            <span>Verdict: <span id="verdictText">Supported</span></span>
+                            <span id="verdictPill" class="verdict-pill pill-supported">SUPPORTED</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.35rem;">
+                            Investigation ID: <span id="resInvestigationId" style="font-family: monospace; color: white;">...</span> |
+                            Mode: <span id="resMode" style="color: #60a5fa;">...</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span id="runtimeVerifiedBadge" class="badge"></span>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <div class="card-title">Explainable Agent Rationale</div>
+                    <div id="rationaleText" class="rationale-box">...</div>
+
+                    <div id="subclaimsContainer" style="margin-bottom: 1rem;">
+                        <label>Verified Subclaims & Checkpoints:</label>
+                        <ul id="subclaimsList" style="margin-left: 1.25rem; font-size: 0.88rem; color: #cbd5e1;"></ul>
+                    </div>
+
+                    <div class="card-title" style="margin-top: 1.5rem;">FalkorDB Multi-Hop Traversal Chains</div>
+                    <div id="graphPathsContainer" class="graph-paths-box">
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">The agent traversed these exact multi-hop edge paths in FalkorDB to substantiate its verdict:</p>
+                        <div id="graphPathsList"></div>
+                    </div>
+
+                    <div class="card-title">Supporting Evidence & Exact Line Citations</div>
+                    <div id="evidenceList"></div>
+
+                    <div id="limitationsBox" class="limitations-box">
+                        <strong>Investigation Scope & Limitations:</strong>
+                        <ul id="limitationsList" style="margin-left: 1.25rem; margin-top: 0.4rem;"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Cypher Console -->
+        <div id="tab-cypher" class="tab-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>FalkorDB Interactive Cypher Console</span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Direct parameterized query execution</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    Run custom Cypher queries directly against the FalkorDB graph engine.
+                </p>
+                <div class="form-group">
+                    <label>Cypher Query:</label>
+                    <textarea id="cypherInput" style="min-height: 100px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">MATCH (e:Evidence)-[r:REFERENCES]->(ref:Evidence) RETURN e.source, type(r), ref.source LIMIT 10</textarea>
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <button class="btn-view-code" onclick="setCypherQuery('MATCH (r:Repository)-[:HAS_EVIDENCE]->(e:Evidence) RETURN r.id, count(e) AS file_count')">Repository Files</button>
+                    <button class="btn-view-code" onclick="setCypherQuery('MATCH (e:Evidence)-[r:REFERENCES]->(ref:Evidence) RETURN e.source, type(r), ref.source LIMIT 10')">Cross-File References</button>
+                    <button class="btn-view-code" onclick="setCypherQuery('MATCH (e:Evidence)-[:USES_DEPENDENCY]->(d:Dependency) RETURN e.source, d.name, d.type LIMIT 10')">Dependencies</button>
+                    <button class="btn-view-code" onclick="setCypherQuery('MATCH (r:Repository)-[:HAS_CLAIM]->(c)<-[:EVALUATED]-(i) RETURN r.id, c.text, i.verdict, i.timestamp LIMIT 10')">Session Memory</button>
+                </div>
+                <button class="btn-submit" style="width: auto; padding: 0.6rem 1.5rem;" onclick="runCypherQuery()">Execute Cypher</button>
+
+                <div id="cypherResultsWrap" style="margin-top: 1.5rem; display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.85rem; font-weight: 600;">Query Results:</span>
+                        <span id="cypherElapsed" style="font-size: 0.75rem; color: #38bdf8; font-family: monospace;"></span>
+                    </div>
+                    <div style="max-height: 350px; overflow-y: auto; overflow-x: auto; margin-top: 0.5rem;">
+                        <table class="data-table" id="cypherTable">
+                            <thead id="cypherThead"></thead>
+                            <tbody id="cypherTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: MCP Tools -->
+        <div id="tab-mcp" class="tab-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>Model Context Protocol (MCP) Server</span>
+                    <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">JSON-RPC 2.0 Active</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    ImpactGraph natively implements the official Model Context Protocol (MCP). External AI assistants (Cursor, Claude Desktop, Antigravity) can connect via stdio (<code style="color:#60a5fa;">python backend/mcp_server.py</code>) or HTTP POST (<code style="color:#60a5fa;">/mcp</code>).
+                </p>
+                <div id="mcpToolsList"></div>
+            </div>
+        </div>
+
+        <!-- TAB 4: Architecture Centrality -->
+        <div id="tab-centrality" class="tab-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>FalkorDB Architecture Centrality Hubs</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Graph Degree & Bottleneck Analysis</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                    Graph algorithms query FalkorDB to discover the highest-impact architectural files and automation hubs in the repository.
+                </p>
+                <div style="max-height: 450px; overflow-y: auto;">
+                    <table class="data-table" id="centralityTable">
+                        <thead>
+                            <tr>
+                                <th>File / Component</th>
+                                <th>Type</th>
+                                <th>In-Degree</th>
+                                <th>Out-Degree</th>
+                                <th>Dependencies</th>
+                                <th>Centrality Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="centralityBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Slide-Out Code Drawer -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+    <div class="drawer" id="codeDrawer">
+        <div class="drawer-header">
+            <div>
+                <span id="drawerFilePath" style="font-weight: 700; color: #38bdf8; font-size: 0.95rem;">File Preview</span>
+                <div id="drawerSha" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">SHA: ...</div>
+            </div>
+            <button class="btn-view-code" onclick="closeDrawer()">✕ Close</button>
+        </div>
+        <div class="drawer-body" id="drawerBody">
+            <p style="color: var(--text-muted);">Loading file contents from FalkorDB...</p>
+        </div>
+    </div>
+
+    <!-- LLM Settings Modal -->
+    <div class="drawer-overlay" id="modalOverlay" onclick="closeSettingsModal()"></div>
+    <div class="modal" id="settingsModal">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <h3 style="font-size: 1.2rem; font-weight: 800;">LLM Provider Settings</h3>
+            <button class="btn-view-code" onclick="closeSettingsModal()">✕</button>
+        </div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Configure Google Gemini, OpenRouter, or OpenAI credentials for live reasoning synthesis. If left empty, ImpactGraph seamlessly runs its deterministic rule engine with zero API keys required.
+        </p>
+        <div class="form-group">
+            <label>Provider Type:</label>
+            <select id="modalProvider" onchange="onProviderChange()">
+                <option value="gemini" selected>Google Gemini (API Key from AI Studio)</option>
+                <option value="openrouter">OpenRouter (https://openrouter.ai/api/v1)</option>
+                <option value="openai">OpenAI (https://api.openai.com/v1)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>API Key:</label>
+            <input type="text" id="modalApiKey" placeholder="AIzaSy... or sk-or-v1-... or sk-...">
+        </div>
+        <div class="form-group">
+            <label>Model Identifier:</label>
+            <input type="text" id="modalModel" placeholder="e.g. gemini-3.8-flash or nvidia/nemotron-3.5-lightning:free" value="gemini-3.8-flash">
+        </div>
+        <button class="btn-submit" onclick="saveLLMSettings()">Save Configuration</button>
+    </div>
+
+    <footer>
+        <p><strong>ImpactGraph 2.0</strong> — Built for WeMakeDevs × FalkorDB Graph Hacks (Track: Agents That Act on Connected Data)</p>
+        <p style="margin-top: 0.35rem; color: #64748b;">Powered by FalkorDB Graph Engine, Model Context Protocol (MCP), and Multi-Hop ReAct Reasoning</p>
+    </footer>
+
+    <script>
+        // Tab switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabId === 'tab-mcp') loadMCPTools();
+            if (tabId === 'tab-centrality') fetchCentrality(document.getElementById('ownerInput').value + '/' + document.getElementById('repoInput').value);
+        }
+
+        // Graph Canvas Simulation & Zoom/Pan
+        let graphNodes = [];
+        let graphEdges = [];
+        let traversedNodeIds = new Set();
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX, startY;
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            drawGraph();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.1 : 0.9;
+            zoom *= factor;
+            zoom = Math.max(0.4, Math.min(3, zoom));
+            drawGraph();
+        });
+
+        canvas.addEventListener('mousedown', e => {
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+        });
+        window.addEventListener('mousemove', e => {
+            if (isDragging) {
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                drawGraph();
+            }
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        // Node Click Handler
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = (e.clientX - rect.left - panX) / zoom;
+            const clickY = (e.clientY - rect.top - panY) / zoom;
+
+            for (const n of graphNodes) {
+                const dx = clickX - n.x;
+                const dy = clickY - n.y;
+                if (Math.sqrt(dx * dx + dy * dy) < 18) {
+                    if (n.source) {
+                        openDrawerWithContent(n.source, document.getElementById('ownerInput').value + '/' + document.getElementById('repoInput').value);
+                    }
+                    break;
+                }
+            }
+        });
+
+        async function loadSubgraph(repo) {
+            try {
+                const res = await fetch('/graph/subgraph?repository=' + encodeURIComponent(repo));
+                if (res.ok) {
+                    const data = await res.json();
+                    initGraphPhysics(data.nodes || [], data.edges || []);
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        function resetGraphPhysics() {
+            panX = 0; panY = 0; zoom = 1;
+            loadSubgraph(document.getElementById('ownerInput').value + '/' + document.getElementById('repoInput').value);
+        }
+
+        function initGraphPhysics(nodes, edges) {
+            const width = canvas.width || 600;
+            const height = canvas.height || 460;
+
+            graphNodes = nodes.map((n, i) => {
+                const angle = (i / nodes.length) * Math.PI * 2;
+                const radius = Math.min(width, height) * 0.35;
+                return {
+                    ...n,
+                    x: width / 2 + Math.cos(angle) * radius + (Math.random() - 0.5) * 60,
+                    y: height / 2 + Math.sin(angle) * radius + (Math.random() - 0.5) * 60,
+                };
+            });
+            graphEdges = edges;
+
+            // Simple relaxation
+            for (let step = 0; step < 40; step++) {
+                for (let i = 0; i < graphNodes.length; i++) {
+                    for (let j = i + 1; j < graphNodes.length; j++) {
+                        const dx = graphNodes[j].x - graphNodes[i].x;
+                        const dy = graphNodes[j].y - graphNodes[i].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        if (dist < 150) {
+                            const force = (150 - dist) * 0.02;
+                            graphNodes[i].x -= (dx / dist) * force;
+                            graphNodes[i].y -= (dy / dist) * force;
+                            graphNodes[j].x += (dx / dist) * force;
+                            graphNodes[j].y += (dy / dist) * force;
+                        }
+                    }
+                }
+            }
+            drawGraph();
+        }
+
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(zoom, zoom);
+
+            // Draw edges
+            const nodeMap = new Map(graphNodes.map(n => [n.id, n]));
+            graphEdges.forEach(e => {
+                const s = nodeMap.get(e.source);
+                const t = nodeMap.get(e.target);
+                if (s && t) {
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, s.y);
+                    ctx.lineTo(t.x, t.y);
+
+                    const isTraversed = (traversedNodeIds.has(s.id) || (s.source && Array.from(traversedNodeIds).some(x => x.includes(s.source)))) &&
+                                        (traversedNodeIds.has(t.id) || (t.source && Array.from(traversedNodeIds).some(x => x.includes(t.source))));
+
+                    if (isTraversed) {
+                        ctx.strokeStyle = '#ef4444';
+                        ctx.lineWidth = 2.8;
+                    } else if (e.type === 'REFERENCES') {
+                        ctx.strokeStyle = '#38bdf8';
+                        ctx.lineWidth = 1.8;
+                    } else if (e.type === 'USES_DEPENDENCY') {
+                        ctx.strokeStyle = '#f59e0b';
+                        ctx.lineWidth = 1.2;
+                    } else {
+                        ctx.strokeStyle = '#23304a';
+                        ctx.lineWidth = 1;
+                    }
+                    ctx.stroke();
+                }
+            });
+
+            // Draw nodes
+            graphNodes.forEach(n => {
+                ctx.beginPath();
+                const isTraversed = traversedNodeIds.has(n.id) || (n.source && Array.from(traversedNodeIds).some(t => t.includes(n.source)));
+                const radius = n.type === 'repository' ? 14 : (isTraversed ? 11 : 8);
+                ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+
+                if (n.type === 'repository') ctx.fillStyle = '#a855f7';
+                else if (n.type === 'workflow') ctx.fillStyle = '#3b82f6';
+                else if (n.group === 'dependency') ctx.fillStyle = '#f59e0b';
+                else ctx.fillStyle = '#10b981';
+
+                ctx.fill();
+
+                if (isTraversed) {
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 3.5;
+                    ctx.stroke();
+                } else {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+
+                // Label
+                ctx.fillStyle = '#cbd5e1';
+                ctx.font = '10px JetBrains Mono';
+                const label = (n.label || '').split('/').pop();
+                ctx.fillText(label.slice(0, 18), n.x + 13, n.y + 3);
+            });
+
+            ctx.restore();
+        }
+
+        // Drawer
+        async function openDrawerWithContent(source, repo, supportingLines = '') {
+            document.getElementById('drawerOverlay').style.display = 'block';
+            const drawer = document.getElementById('codeDrawer');
+            drawer.classList.add('open');
+            document.getElementById('drawerFilePath').textContent = source;
+
+            const body = document.getElementById('drawerBody');
+            body.innerHTML = '<p style="color:#94a3b8;">Fetching decoded source blob from FalkorDB...</p>';
+
+            const lineSet = new Set((supportingLines || '').split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)));
+
+            try {
+                const res = await fetch(`/api/evidence/content?repository=${encodeURIComponent(repo)}&source=${encodeURIComponent(source)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('drawerSha').textContent = 'SHA: ' + (data.sha || 'N/A') + (data.from_cache ? ' (Cached in FalkorDB)' : ' (Live Fetch)');
+
+                    const lines = (data.content || '').split('\\n');
+                    let tableHtml = '<table class="code-table">';
+                    lines.forEach((l, idx) => {
+                        const lineNo = idx + 1;
+                        const isHit = lineSet.has(lineNo);
+                        tableHtml += `
+                            <tr class="${isHit ? 'code-line-highlighted' : ''}">
+                                <td class="code-line-no">${lineNo}</td>
+                                <td class="code-line-text">${escapeHtml(l)}</td>
+                            </tr>
+                        `;
+                    });
+                    tableHtml += '</table>';
+                    body.innerHTML = tableHtml;
+                } else {
+                    body.innerHTML = '<p style="color:#ef4444;">Unable to fetch file content.</p>';
+                }
+            } catch (err) {
+                body.innerHTML = '<p style="color:#ef4444;">Error: ' + err + '</p>';
+            }
+        }
+
+        function closeDrawer() {
+            document.getElementById('drawerOverlay').style.display = 'none';
+            document.getElementById('codeDrawer').classList.remove('open');
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // Settings Modal
+        function openSettingsModal() {
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('settingsModal').style.display = 'block';
+        }
+        function closeSettingsModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function onProviderChange() {
+            const provider = document.getElementById('modalProvider').value;
+            const modelInput = document.getElementById('modalModel');
+            if (provider === 'gemini') {
+                modelInput.value = 'gemini-3.8-flash';
+            } else if (provider === 'openrouter') {
+                modelInput.value = 'nvidia/nemotron-3.5-lightning:free';
+            } else {
+                modelInput.value = 'gpt-4o-mini';
+            }
+        }
+
+        async function saveLLMSettings() {
+            const apiKey = document.getElementById('modalApiKey').value.trim();
+            const model = document.getElementById('modalModel').value.trim();
+            const provider = document.getElementById('modalProvider').value;
+
+            try {
+                const res = await fetch('/api/llm/configure', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        api_key: apiKey,
+                        model: model,
+                        provider: provider,
+                        is_openrouter: provider === 'openrouter'
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const mName = (data.model || '').split('/').pop();
+                    document.getElementById('llmIndicatorText').textContent = 'LLM: ' + mName;
+                    document.getElementById('statEngine').textContent = data.provider.toUpperCase() + ' (' + mName + ')';
+                    closeSettingsModal();
+                    alert("LLM Provider Configured: " + data.provider + " (" + data.model + ")");
+                }
+            } catch (err) {
+                alert("Settings failed: " + err);
+            }
+        }
+
+        // Cypher Console
+        function setCypherQuery(q) {
+            document.getElementById('cypherInput').value = q;
+        }
+
+        async function runCypherQuery() {
+            const cypher = document.getElementById('cypherInput').value.trim();
+            if (!cypher) return;
+
+            try {
+                const res = await fetch('/api/cypher/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cypher })
+                });
+                const data = await res.json();
+                const wrap = document.getElementById('cypherResultsWrap');
+                wrap.style.display = 'block';
+                document.getElementById('cypherElapsed').textContent = `${data.elapsed_ms} ms`;
+
+                const thead = document.getElementById('cypherThead');
+                const tbody = document.getElementById('cypherTbody');
+                thead.innerHTML = ''; tbody.innerHTML = '';
+
+                if (!data.success) {
+                    tbody.innerHTML = `<tr><td style="color:#ef4444;" colspan="5">Error: ${data.error}</td></tr>`;
+                    return;
+                }
+
+                // Headers
+                const headers = (data.header || []).map(h => Array.isArray(h) ? h[1] : h);
+                let headHtml = '<tr>';
+                headers.forEach(h => { headHtml += `<th>${h}</th>`; });
+                headHtml += '</tr>';
+                thead.innerHTML = headHtml;
+
+                // Rows
+                (data.result_set || []).forEach(row => {
+                    let trHtml = '<tr>';
+                    row.forEach(val => {
+                        trHtml += `<td style="font-family:'JetBrains Mono';">${escapeHtml(String(val))}</td>`;
+                    });
+                    trHtml += '</tr>';
+                    tbody.innerHTML += trHtml;
+                });
+
+                if (data.result_set.length === 0) {
+                    tbody.innerHTML = '<tr><td style="color:#94a3b8;" colspan="5">Query returned 0 rows.</td></tr>';
+                }
+            } catch (err) { alert("Cypher query error: " + err); }
+        }
+
+        // MCP Tools Explorer
+        async function loadMCPTools() {
+            const listWrap = document.getElementById('mcpToolsList');
+            listWrap.innerHTML = '<p style="color:#94a3b8;">Loading Model Context Protocol tool catalog...</p>';
+
+            try {
+                const res = await fetch('/mcp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' })
+                });
+                const data = await res.json();
+                const tools = data.result.tools || [];
+                listWrap.innerHTML = '';
+
+                tools.forEach(t => {
+                    const div = document.createElement('div');
+                    div.className = 'evidence-card';
+                    div.innerHTML = `
+                        <div class="evidence-header">
+                            <span style="color:#38bdf8; font-weight:700;">tool: ${t.name}</span>
+                            <span style="font-size:0.75rem; color:#94a3b8;">MCP JSON-RPC 2.0</span>
+                        </div>
+                        <div class="evidence-body">
+                            <p style="color:#cbd5e1; margin-bottom:0.4rem;">${t.description}</p>
+                            <pre style="color:#64748b; font-size:0.75rem;">${JSON.stringify(t.inputSchema, null, 2)}</pre>
+                        </div>
+                    `;
+                    listWrap.appendChild(div);
+                });
+            } catch (err) {
+                listWrap.innerHTML = '<p style="color:#ef4444;">Failed to load MCP tools: ' + err + '</p>';
+            }
+        }
+
+        // Investigation Form Submission
+        document.getElementById('investigateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const owner = document.getElementById('ownerInput').value.trim();
+            const repo = document.getElementById('repoInput').value.trim();
+            const claim = document.getElementById('claimInput').value.trim();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            submitBtn.disabled = true;
+            btnText.textContent = "Agent Investigating...";
+
+            document.getElementById('resultsSection').style.display = 'none';
+            const traceBox = document.getElementById('traceContainer');
+            traceBox.innerHTML = '';
+
+            const livePill = document.getElementById('liveStatusPill');
+            livePill.textContent = "Autonomous Loop Active";
+            livePill.style.background = 'rgba(59, 130, 246, 0.2)';
+            livePill.style.color = '#60a5fa';
+
+            try {
+                const res = await fetch('/agent/investigate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner, repo, claim })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert("Investigation Error: " + (err.detail || "Request failed"));
+                    return;
+                }
+
+                const data = await res.json();
+
+                // Animate ReAct Trace
+                const trace = data.agent_trace || [];
+                for (let i = 0; i < trace.length; i++) {
+                    const step = trace[i];
+                    const div = document.createElement('div');
+                    div.className = 'trace-step';
+                    div.innerHTML = `
+                        <div class="trace-header">
+                            <span class="trace-pill" style="background:#172136; color:#38bdf8;">Step ${step.step}: ${step.phase}</span>
+                            <span style="font-size:0.75rem; color:#64748b; font-family:'JetBrains Mono';">${step.action}</span>
+                        </div>
+                        <div class="trace-thought">💭 Thought: ${step.thought}</div>
+                        <div class="trace-obs">👁️ Observation: ${step.observation}</div>
+                    `;
+                    traceBox.appendChild(div);
+                    traceBox.scrollTop = traceBox.scrollHeight;
+                    await new Promise(r => setTimeout(r, 200));
+                }
+
+                // Highlight traversed nodes
+                traversedNodeIds.clear();
+                (data.evidence || []).forEach(ev => traversedNodeIds.add(ev.source));
+                (data.traversal_chains || []).forEach(ch => {
+                    ch.split(' -[:').forEach(part => traversedNodeIds.add(part.replace(/REFERENCES|USES_DEPENDENCY|]->/g, '').trim()));
+                });
+                drawGraph();
+
+                renderReport(data);
+                fetchStats();
+                fetchCentrality(`${owner}/${repo}`);
+
+                livePill.textContent = "Completed";
+                livePill.style.background = 'rgba(16, 185, 129, 0.2)';
+                livePill.style.color = '#34d399';
+
+            } catch (err) {
+                alert("Agent loop error: " + err);
+            } finally {
+                submitBtn.disabled = false;
+                btnText.textContent = "Launch Autonomous Agent";
+            }
+        });
+
+        function renderReport(data) {
+            const section = document.getElementById('resultsSection');
+            section.style.display = 'block';
+            section.scrollIntoView({ behavior: 'smooth' });
+
+            const banner = document.getElementById('verdictBanner');
+            const vText = document.getElementById('verdictText');
+            const vPill = document.getElementById('verdictPill');
+            const vIcon = document.getElementById('verdictIcon');
+
+            const verdict = data.verdict || "needs_review";
+            vText.textContent = verdict.replace(/_/g, ' ').toUpperCase();
+            vPill.textContent = verdict.toUpperCase();
+            vPill.className = "verdict-pill pill-" + verdict;
+            banner.className = "verdict-banner verdict-" + verdict;
+
+            if (verdict === 'supported') vIcon.textContent = "✅";
+            else if (verdict === 'partially_supported') vIcon.textContent = "⚠️";
+            else if (verdict === 'contradicted') vIcon.textContent = "❌";
+            else vIcon.textContent = "🔍";
+
+            document.getElementById('resInvestigationId').textContent = data.investigation_id;
+            document.getElementById('resMode').textContent = data.evaluation_mode || "deterministic_rule_engine";
+
+            // Runtime verification badge
+            const rBadge = document.getElementById('runtimeVerifiedBadge');
+            if (data.runtime_execution_verified) {
+                rBadge.style.display = 'inline-flex';
+                rBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+                rBadge.style.border = '1px solid var(--success)';
+                rBadge.style.color = '#34d399';
+                rBadge.textContent = "⚡ Runtime Execution Verified (GitHub Actions)";
+            } else {
+                rBadge.style.display = 'inline-flex';
+                rBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+                rBadge.style.border = '1px solid var(--warning)';
+                rBadge.style.color = '#fbbf24';
+                rBadge.textContent = "ℹ️ Configuration Level (Live Run Unverified)";
+            }
+
+            document.getElementById('rationaleText').textContent = data.rationale || "No rationale recorded.";
+
+            // Subclaims
+            const subList = document.getElementById('subclaimsList');
+            subList.innerHTML = "";
+            (data.subclaims_verified || []).forEach(sc => {
+                const li = document.createElement('li');
+                li.textContent = sc;
+                subList.appendChild(li);
+            });
+            if (!data.subclaims_verified || data.subclaims_verified.length === 0) {
+                subList.innerHTML = "<li>No subclaims isolated.</li>";
+            }
+
+            // Multi-Hop Traversal Chains
+            const gpList = document.getElementById('graphPathsList');
+            gpList.innerHTML = "";
+            const chains = data.traversal_chains || data.traversed_paths || [];
+            if (chains.length > 0) {
+                chains.slice(0, 8).forEach(p => {
+                    const tag = document.createElement('span');
+                    tag.className = 'graph-path-tag';
+                    tag.textContent = p;
+                    gpList.appendChild(tag);
+                });
+            } else {
+                gpList.innerHTML = "<span style='font-size:0.8rem; color:var(--text-muted);'>Direct repository file match.</span>";
+            }
+
+            // Evidence Cards with View Code button
+            const evList = document.getElementById('evidenceList');
+            evList.innerHTML = "";
+            (data.evidence || []).forEach(ev => {
+                const card = document.createElement('div');
+                card.className = "evidence-card";
+                card.innerHTML = `
+                    <div class="evidence-header">
+                        <span>📄 ${ev.source}</span>
+                        <div>
+                            <span style="color: #60a5fa; margin-right: 0.75rem;">Lines: ${ev.supporting_lines || "Config"}</span>
+                            <button class="btn-view-code" onclick="openDrawerWithContent('${ev.source}', '${data.repository}', '${ev.supporting_lines || ''}')">View Source</button>
+                        </div>
+                    </div>
+                    <div class="evidence-body">
+                        <div style="color: #64748b; margin-bottom: 0.5rem;">Git Blob SHA: ${ev.blob_sha}</div>
+                        <div class="code-line highlight">Verified lines cited: ${ev.supporting_lines || "File configuration matches claim"}</div>
+                    </div>
+                `;
+                evList.appendChild(card);
+            });
+
+            // Limitations
+            const limList = document.getElementById('limitationsList');
+            limList.innerHTML = "";
+            (data.limitations || []).forEach(lim => {
+                const li = document.createElement('li');
+                li.textContent = lim;
+                limList.appendChild(li);
+            });
+        }
+
+        // Stats & Centrality
+        async function fetchStats() {
+            try {
+                const res = await fetch('/graph/stats');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('statNodes').textContent = data.node_count || '0';
+                    document.getElementById('statEdges').textContent = data.relationship_count || '0';
+                }
+                const llmRes = await fetch('/api/llm/status');
+                if (llmRes.ok) {
+                    const ldata = await llmRes.json();
+                    if (ldata.active) {
+                        const mName = (ldata.model || '').split('/').pop();
+                        document.getElementById('llmIndicatorText').textContent = 'LLM: ' + mName;
+                        document.getElementById('statEngine').textContent = (ldata.provider || 'LLM').toUpperCase() + ' (' + mName + ')';
+                    } else {
+                        document.getElementById('statEngine').textContent = 'Deterministic Rule Engine (Zero Keys)';
+                    }
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function fetchCentrality(repo) {
+            try {
+                const res = await fetch('/graph/centrality?repository=' + encodeURIComponent(repo));
+                if (res.ok) {
+                    const data = await res.json();
+                    const tbody = document.getElementById('centralityBody');
+                    tbody.innerHTML = '';
+                    (data.central_components || []).forEach(c => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td style="font-family:'JetBrains Mono'; color:#38bdf8;">${c.source}</td>
+                            <td><span style="color:#94a3b8;">${c.type}</span></td>
+                            <td>${c.in_degree}</td>
+                            <td>${c.out_degree}</td>
+                            <td>${c.dependency_count}</td>
+                            <td><strong>${c.centrality_score}</strong></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        function setPreset(owner, repo, claim) {
+            document.getElementById('ownerInput').value = owner;
+            document.getElementById('repoInput').value = repo;
+            document.getElementById('claimInput').value = claim;
+        }
+
+        fetchStats();
+        resizeCanvas();
+        loadSubgraph('fastapi/fastapi');
+        fetchCentrality('fastapi/fastapi');
+    </script>
+</body>
+</html>
+"""

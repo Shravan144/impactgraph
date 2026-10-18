@@ -1,10 +1,14 @@
-
+import logging
 from uuid import uuid4
-from investigate_claim import inspect_candidate
-
-from claim_matcher import find_candidate_evidence
 from pydantic import BaseModel, Field
+
+from investigate_claim import inspect_candidate
+from claim_matcher import find_candidate_evidence
+from store_evidence import ensure_repository_ingested
 from finding_store import save_finding
+from evaluator import evaluate_investigation
+
+logger = logging.getLogger("impactgraph.investigation")
 
 
 class InvestigationRequest(BaseModel):
@@ -17,8 +21,12 @@ class InvestigationRequest(BaseModel):
         description="GitHub repository name",
     )
     claim: str = Field(
-        min_length=10,
+        min_length=5,
         description="Claim to investigate",
+    )
+    force_refresh: bool = Field(
+        default=False,
+        description="Force re-ingesting repository evidence into FalkorDB",
     )
 
 
@@ -27,32 +35,50 @@ class InvestigationResult(BaseModel):
     repository: str
     claim: str
     verdict: str
+    rationale: str | None = None
     evidence_count: int
     limitations: list[str]
+    runtime_execution_verified: bool = False
 
 
 def collect_candidates(
     request: InvestigationRequest,
     limit: int = 3,
 ) -> dict:
-    """Find candidate evidence for a repository claim."""
+    """Ensure repository graph is ingested and find ranked candidate evidence."""
 
     investigation_id = f"investigation-{uuid4().hex[:12]}"
+    requested_repository = f"{request.owner}/{request.repo}".lower()
 
-    candidates = find_candidate_evidence(
-        request.claim,
-        limit=limit,
-    )
+    # Step 1: Ensure repository evidence is loaded into FalkorDB
+    try:
+        ensure_repository_ingested(
+            request.owner,
+            request.repo,
+            claim_focus=request.claim,
+            force_refresh=getattr(request, "force_refresh", False),
+        )
+    except Exception as exc:
+        logger.warning(f"Repository graph ingestion encountered an issue: {exc}")
 
-    # Keep only candidates belonging to the requested repository.
-    requested_repository = (
-        f"{request.owner}/{request.repo}"
-    ).lower()
+    # Step 2: Query FalkorDB for candidate evidence with graph traversals
+    try:
+        candidates = find_candidate_evidence(
+            request.claim,
+            limit=limit,
+            repository_filter=requested_repository,
+        )
+    except TypeError:
+        candidates = find_candidate_evidence(
+            request.claim,
+            limit=limit,
+        )
 
+    # Keep only candidates belonging to the requested repository
     candidates = [
         candidate
         for candidate in candidates
-        if candidate["repository"].lower()
+        if candidate.get("repository", "").lower()
         == requested_repository
     ]
 
@@ -67,13 +93,16 @@ def collect_candidates(
 def inspect_candidates(
     investigation: dict,
 ) -> dict:
-    """Retrieve source content for the selected candidates."""
+    """Inspect candidate evidence files and extract verified line citations."""
 
     inspected_evidence = []
 
     for candidate in investigation["candidates"]:
         try:
-            evidence = inspect_candidate(candidate)
+            try:
+                evidence = inspect_candidate(candidate, claim=investigation.get("claim"))
+            except TypeError:
+                evidence = inspect_candidate(candidate)
 
             if evidence is None:
                 continue
@@ -81,13 +110,16 @@ def inspect_candidates(
             inspected_evidence.append({
                 "source": evidence["path"],
                 "blob_sha": evidence["sha"],
+                "size": evidence["size"],
                 "relevant_lines": evidence["relevant_lines"],
+                "content": evidence.get("content", ""),
+                "connected_paths": candidate.get("connected_paths", []),
+                "score": candidate.get("score", 0),
             })
 
         except Exception as exc:
-            print(
-                f"Could not inspect "
-                f"{candidate['source']}: {exc}"
+            logger.warning(
+                f"Could not inspect {candidate.get('source')}: {exc}"
             )
 
     return {
@@ -102,52 +134,58 @@ def inspect_candidates(
 def store_investigation(
     investigation: dict,
 ) -> dict:
-    """Store retrieved evidence for human review."""
+    """Evaluate candidate evidence, synthesize verdict, and persist in FalkorDB."""
 
-    evidence = []
+    claim = investigation["claim"]
+    repository = investigation["repository"]
+    investigation_id = investigation["investigation_id"]
+    evidence_candidates = investigation.get("evidence", [])
 
-    for item in investigation["evidence"]:
-        lines = item.get("relevant_lines", [])
+    # Step 3: Run Agent Evaluator (LLM or deterministic engine)
+    evaluation = evaluate_investigation(claim, repository, evidence_candidates)
 
-        supporting_lines = ", ".join(
-            str(line["line"]) for line in lines
-        )
+    verdict = evaluation["verdict"]
+    rationale = evaluation["rationale"]
+    limitations = evaluation["limitations"]
+    subclaims_verified = evaluation.get("subclaims_verified", [])
+    runtime_verified = evaluation.get("runtime_execution_verified", False)
+    evaluation_mode = evaluation.get("evaluation_mode", "deterministic_rule_engine")
+    validated_evidence = evaluation.get("evidence", [])
 
-        evidence.append({
-            "source": item["source"],
-            "blob_sha": item["blob_sha"],
-            "supporting_lines": supporting_lines,
-        })
+    claim_id = f"claim-{investigation_id}"
 
-    if not evidence:
-        raise ValueError(
-            "No evidence was retrieved; nothing to store."
-        )
-
-    claim_id = (
-        f"claim-{investigation['investigation_id']}"
-    )
-
-    limitations = [
-        "Evidence requires human review.",
-        "Successful runtime execution has not been verified.",
-    ]
-
+    # Step 4: Persist finding and traversed edges in FalkorDB
     save_finding(
-        investigation_id=investigation["investigation_id"],
-        repository=investigation["repository"],
+        investigation_id=investigation_id,
+        repository=repository,
         claim_id=claim_id,
-        claim_text=investigation["claim"],
-        verdict="needs_review",
-        evidence=evidence,
+        claim_text=claim,
+        verdict=verdict,
+        evidence=validated_evidence,
         limitations=limitations,
+        rationale=rationale,
+        subclaims_verified=subclaims_verified,
+        runtime_execution_verified=runtime_verified,
+        evaluation_mode=evaluation_mode,
     )
 
     return {
-        "investigation_id": investigation["investigation_id"],
-        "repository": investigation["repository"],
-        "claim": investigation["claim"],
-        "verdict": "needs_review",
-        "evidence_count": len(evidence),
+        "investigation_id": investigation_id,
+        "repository": repository,
+        "claim": claim,
+        "verdict": verdict,
+        "rationale": rationale,
+        "evidence_count": len(validated_evidence),
+        "evidence": [
+            {
+                "source": e["source"],
+                "blob_sha": e["blob_sha"],
+                "supporting_lines": e["supporting_lines"],
+            }
+            for e in validated_evidence
+        ],
+        "subclaims_verified": subclaims_verified,
         "limitations": limitations,
+        "runtime_execution_verified": runtime_verified,
+        "evaluation_mode": evaluation_mode,
     }
