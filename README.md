@@ -232,19 +232,27 @@ Or communicate via HTTP POST JSON-RPC 2.0 at `http://localhost:8000/mcp`.
 
 ---
 
-## 8. Local Setup & Quickstart
+## 8. Deployment & Quickstart
 
-### Prerequisites
-- Python 3.11+
-- Docker Desktop
-- Git
+### Option A: One-Command Docker Compose (Easiest Local Setup)
+Clone the repository and run:
+```bash
+git clone https://github.com/shravanb2005/impactgraph.git
+cd impactgraph
+docker compose up --build
+```
+This automatically spins up both the **FalkorDB** container and the **ImpactGraph Agent backend + UI** on `http://localhost:8000`.
 
-### Step 1: Start FalkorDB
+---
+
+### Option B: Local Virtual Environment Setup
+
+#### Step 1: Start FalkorDB
 ```bash
 docker run -p 6379:6379 -p 3000:3000 -it --rm --name impactgraph-db falkordb/falkordb:latest
 ```
 
-### Step 2: Setup Environment
+#### Step 2: Setup Environment
 ```bash
 git clone https://github.com/shravanb2005/impactgraph.git
 cd impactgraph
@@ -255,20 +263,37 @@ python -m venv backend/.venv
 # Linux / macOS:
 source backend/.venv/bin/activate
 
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 cp .env.example .env
 ```
 
-### Step 3: Run the Test Suite (26/26 Passing)
+#### Step 3: Run the Test Suite (26/26 Passing)
 ```bash
 pytest -o pythonpath=backend backend/tests
 ```
 
-### Step 4: Launch ImpactGraph
+#### Step 4: Launch ImpactGraph
 ```bash
 python -m uvicorn main:app --app-dir backend --reload --port 8000
 ```
 Open your browser at **`http://localhost:8000`** or **`http://localhost:8000/ui`**!
+
+---
+
+### Option C: Live Cloud Deployment (FalkorDB Cloud + Render)
+
+1. **FalkorDB Cloud**:
+   - Create a free database at [FalkorDB Cloud](https://app.falkordb.cloud/).
+   - Copy your connection string or Host, Port, and Password.
+2. **Render Web Service**:
+   - Fork / push this repo to GitHub and connect it to [Render](https://render.com/).
+   - Select the included `render.yaml` Blueprint or set:
+     - **Build Command:** `pip install -r backend/requirements.txt`
+     - **Start Command:** `uvicorn main:app --app-dir backend --host 0.0.0.0 --port $PORT`
+     - **Environment Variables:**
+       - `FALKORDB_URL`: Your FalkorDB Cloud URL (e.g. `falkor://username:password@cloud-instance.falkordb.cloud:12345`)
+       - `GEMINI_API_KEY`: Google Gemini Key
+       - `OPENROUTER_API_KEY`: (Optional) OpenRouter Key
 
 ---
 

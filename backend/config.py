@@ -4,8 +4,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+FALKORDB_URL = os.getenv("FALKORDB_URL", None)
 FALKORDB_HOST = os.getenv("FALKORDB_HOST", "localhost")
 FALKORDB_PORT = int(os.getenv("FALKORDB_PORT", "6379"))
+FALKORDB_USERNAME = os.getenv("FALKORDB_USERNAME", None)
+FALKORDB_PASSWORD = os.getenv("FALKORDB_PASSWORD", None)
+FALKORDB_SSL = os.getenv("FALKORDB_SSL", "false").lower() in ("true", "1", "yes")
 FALKORDB_GRAPH = os.getenv("FALKORDB_GRAPH", "ImpactGraph")
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", None)

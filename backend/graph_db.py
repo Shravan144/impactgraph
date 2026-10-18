@@ -9,13 +9,23 @@ _db_instance: FalkorDB | None = None
 
 
 def get_falkordb() -> FalkorDB:
-    """Get or initialize the FalkorDB client connection."""
+    """Get or initialize the FalkorDB client connection (supports local or FalkorDB Cloud)."""
     global _db_instance
     if _db_instance is None:
-        _db_instance = FalkorDB(
-            host=config.FALKORDB_HOST,
-            port=config.FALKORDB_PORT,
-        )
+        if config.FALKORDB_URL:
+            _db_instance = FalkorDB.from_url(config.FALKORDB_URL)
+        else:
+            kwargs = {
+                "host": config.FALKORDB_HOST,
+                "port": config.FALKORDB_PORT,
+            }
+            if config.FALKORDB_USERNAME:
+                kwargs["username"] = config.FALKORDB_USERNAME
+            if config.FALKORDB_PASSWORD:
+                kwargs["password"] = config.FALKORDB_PASSWORD
+            if config.FALKORDB_SSL:
+                kwargs["ssl"] = True
+            _db_instance = FalkorDB(**kwargs)
     return _db_instance
 
 
