@@ -10,6 +10,9 @@ from graph_algorithms import (
     compute_component_centrality,
     recall_cross_session_memory,
     get_evidence_subgraph,
+    analyze_blast_radius,
+    audit_supply_chain_security,
+    drill_down_graph_chat,
 )
 from investigation import (
     InvestigationRequest,
@@ -107,6 +110,41 @@ MCP_TOOLS = [
             "required": ["repository"],
         },
     },
+    {
+        "name": "graph_blast_radius",
+        "description": "Compute cascading architectural impact and blast radius if a file/component is modified or broken.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "repository": {"type": "string", "description": "Repository identifier (e.g. fastapi/fastapi)"},
+                "target_source": {"type": "string", "description": "Target file path to evaluate blast radius for (e.g. scripts/docs.py)"},
+            },
+            "required": ["repository", "target_source"],
+        },
+    },
+    {
+        "name": "graph_supply_chain_audit",
+        "description": "Perform an automated DevSecOps supply-chain audit across GitHub Actions and dependencies in FalkorDB.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "repository": {"type": "string", "description": "Repository identifier (e.g. pallets/flask)"},
+            },
+            "required": ["repository"],
+        },
+    },
+    {
+        "name": "agent_drill_down_chat",
+        "description": "Conversational graph-guided reasoning tool to answer follow-up questions about relationships, paths, or decisions.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "repository": {"type": "string", "description": "Repository identifier (e.g. fastapi/fastapi)"},
+                "query": {"type": "string", "description": "User question or drill-down inquiry"},
+            },
+            "required": ["repository", "query"],
+        },
+    },
 ]
 
 
@@ -161,6 +199,20 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             max_nodes = arguments.get("max_nodes", 40)
             subgraph = get_evidence_subgraph(repo, max_nodes=max_nodes)
             return subgraph
+
+        elif name == "graph_blast_radius":
+            repo = arguments["repository"]
+            target = arguments["target_source"]
+            return analyze_blast_radius(repo, target)
+
+        elif name == "graph_supply_chain_audit":
+            repo = arguments["repository"]
+            return audit_supply_chain_security(repo)
+
+        elif name == "agent_drill_down_chat":
+            repo = arguments["repository"]
+            q = arguments["query"]
+            return drill_down_graph_chat(repo, q)
 
         else:
             return {"error": f"Unknown tool: {name}"}

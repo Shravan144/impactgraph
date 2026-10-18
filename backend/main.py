@@ -5,8 +5,14 @@ from pydantic import BaseModel
 
 from report_finding import generate_report, list_recent_investigations
 from graph_db import get_graph_stats, check_db_health, execute_query
-from graph_algorithms import get_evidence_subgraph, compute_component_centrality
-from mcp_server import handle_json_rpc
+from graph_algorithms import (
+    get_evidence_subgraph,
+    compute_component_centrality,
+    analyze_blast_radius,
+    audit_supply_chain_security,
+    drill_down_graph_chat,
+)
+from mcp_server import handle_json_rpc, handle_tool_call, MCP_TOOLS
 from agent_loop import run_autonomous_investigation_loop
 from fetch_evidence import fetch_file_by_path
 import config
@@ -58,6 +64,16 @@ class CypherQueryRequest(BaseModel):
     params: dict | None = None
 
 
+class DrillDownChatRequest(BaseModel):
+    repository: str = "fastapi/fastapi"
+    query: str
+
+
+class MCPToolRunRequest(BaseModel):
+    name: str
+    arguments: dict = {}
+
+
 @app.get("/")
 def root(request: Request):
     """Serve the interactive UI for web browsers, or API info for JSON clients."""
@@ -102,6 +118,35 @@ def get_subgraph(repository: str = "fastapi/fastapi", max_nodes: int = 50):
 def get_centrality(repository: str = "fastapi/fastapi"):
     """Return component centrality analysis showing top architectural hubs."""
     return {"central_components": compute_component_centrality(repository)}
+
+
+@app.get("/api/graph/blast-radius")
+def get_blast_radius(repository: str = "fastapi/fastapi", source: str = "scripts/docs.py"):
+    """Compute cascading architectural impact and blast radius for a file in FalkorDB."""
+    return analyze_blast_radius(repository, source)
+
+
+@app.get("/api/graph/supply-chain")
+def get_supply_chain(repository: str = "fastapi/fastapi"):
+    """DevSecOps supply-chain audit across GitHub Actions and dependencies in FalkorDB."""
+    return audit_supply_chain_security(repository)
+
+
+@app.post("/api/chat/drill-down")
+def post_drill_down_chat(req: DrillDownChatRequest):
+    """Conversational graph-guided reasoning query."""
+    return drill_down_graph_chat(req.repository, req.query)
+
+
+@app.post("/api/mcp/run-tool")
+def run_mcp_tool_direct(req: MCPToolRunRequest):
+    """Direct execution endpoint for interactive UI MCP playground."""
+    result = handle_tool_call(req.name, req.arguments)
+    return {
+        "tool": req.name,
+        "arguments": req.arguments,
+        "result": result,
+    }
 
 
 @app.get("/api/llm/status")

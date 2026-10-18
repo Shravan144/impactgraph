@@ -329,8 +329,10 @@ UI_HTML = """<!DOCTYPE html>
     <!-- Navigation Tabs -->
     <div class="tabs-nav">
         <button class="tab-btn active" onclick="switchTab('tab-investigate')">🚀 Autonomous Agent</button>
+        <button class="tab-btn" onclick="switchTab('tab-blast')">💥 Blast Radius & Impact</button>
+        <button class="tab-btn" onclick="switchTab('tab-supply')">🛡️ Supply Chain Audit</button>
         <button class="tab-btn" onclick="switchTab('tab-cypher')">💻 Cypher Console</button>
-        <button class="tab-btn" onclick="switchTab('tab-mcp')">🔌 MCP Tools (Model Context Protocol)</button>
+        <button class="tab-btn" onclick="switchTab('tab-mcp')">🔌 MCP Tools & Playground</button>
         <button class="tab-btn" onclick="switchTab('tab-centrality')">📊 Architecture Hubs</button>
     </div>
 
@@ -467,11 +469,153 @@ UI_HTML = """<!DOCTYPE html>
                         <strong>Investigation Scope & Limitations:</strong>
                         <ul id="limitationsList" style="margin-left: 1.25rem; margin-top: 0.4rem;"></ul>
                     </div>
+
+                    <!-- Conversational Drill-Down Follow-Up -->
+                    <div style="margin-top: 1.5rem; padding: 1.25rem; background: #0b1329; border: 1px solid #1e3a8a; border-radius: 12px;">
+                        <div class="card-title" style="color: #60a5fa; margin-bottom: 0.4rem;">
+                            <span>💬 Conversational Drill-Down (Ask FalkorDB Agent)</span>
+                            <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">Multi-Hop Graph Context</span>
+                        </div>
+                        <p style="font-size:0.82rem; color:#94a3b8; margin-bottom:0.75rem;">
+                            Have questions about why certain files were cited, how paths connect, or component dependencies? Ask the agent directly:
+                        </p>
+                        <div style="display:flex; gap:0.5rem; margin-bottom:0.6rem;">
+                            <input type="text" id="drillDownQuery" placeholder="e.g. Why does build-docs.yml reference scripts/docs.py?" style="flex:1;">
+                            <button type="button" class="btn-submit" style="width:auto; padding:0.6rem 1.25rem; margin:0;" onclick="submitDrillDown()">Ask Agent</button>
+                        </div>
+                        <div class="presets">
+                            <span class="presets-label">Quick Inquiries:</span>
+                            <button type="button" class="preset-btn" onclick="setDrillDownQuestion('Why does build-docs.yml reference scripts/docs.py?')">Why docs reference?</button>
+                            <button type="button" class="preset-btn" onclick="setDrillDownQuestion('What dependencies are shared between test workflows?')">Shared test dependencies?</button>
+                            <button type="button" class="preset-btn" onclick="setDrillDownQuestion('What is the shortest path between docs and tests?')">Docs to tests path?</button>
+                        </div>
+                        <div id="drillDownAnswerBox" style="display:none; margin-top:1rem; padding:1rem; background:#070d19; border-radius:8px; border-left:3px solid #3b82f6;">
+                            <div style="font-size:0.75rem; color:#60a5fa; font-weight:700; margin-bottom:0.35rem;" id="drillDownSource">Agent Response:</div>
+                            <div id="drillDownAnswerText" style="font-size:0.9rem; line-height:1.5; color:#f1f5f9;">...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 2: Cypher Console -->
+        <!-- TAB 2: Blast Radius & Cascading Impact Engine -->
+        <div id="tab-blast" class="tab-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>💥 Architectural Blast Radius & Cascading Impact Engine</span>
+                    <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171;">FalkorDB Path Propagation</span>
+                </div>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.25rem;">
+                    Know what breaks before merging changes. ImpactGraph queries FalkorDB to trace downstream workflows, tests, and dependent source files that rely on any given file or component.
+                </p>
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                    <div>
+                        <label>Target File or Component to Analyze:</label>
+                        <input type="text" id="blastTargetInput" value="scripts/docs.py" placeholder="e.g. scripts/docs.py or src/flask/testing.py">
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button class="btn-submit" style="margin:0; height:42px; width:100%;" onclick="runBlastRadiusAnalysis()">⚡ Calculate Blast Radius</button>
+                    </div>
+                </div>
+                <div class="presets" style="margin-bottom:1.25rem;">
+                    <span class="presets-label">Preset Components to Test:</span>
+                    <button type="button" class="preset-btn" onclick="setBlastTarget('scripts/docs.py')">fastapi: scripts/docs.py</button>
+                    <button type="button" class="preset-btn" onclick="setBlastTarget('.github/workflows/build-docs.yml')">fastapi: build-docs.yml</button>
+                    <button type="button" class="preset-btn" onclick="setBlastTarget('src/flask/testing.py')">flask: src/flask/testing.py</button>
+                    <button type="button" class="preset-btn" onclick="setBlastTarget('.github/workflows/tests.yaml')">flask: tests.yaml</button>
+                </div>
+
+                <!-- Blast Radius Results -->
+                <div id="blastResults" style="display:none; margin-top:1.5rem;">
+                    <div id="blastSeverityBanner" style="padding:1rem 1.25rem; border-radius:10px; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; background:#1e1b4b; border:1px solid #4338ca;">
+                        <div>
+                            <span style="font-size:1.15rem; font-weight:800;" id="blastSeverityTitle">CRITICAL IMPACT</span>
+                            <div style="font-size:0.82rem; margin-top:0.25rem; color:#cbd5e1;" id="blastSeverityDesc">Modifying this component impacts core CI pipelines and automated tests.</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:1.8rem; font-weight:900; color:#38bdf8;" id="blastScore">0</span>
+                            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Impact Score</div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:1rem; margin-bottom:1.5rem;">
+                        <div style="background:#090e1a; padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                            <div style="font-size:0.75rem; color:#94a3b8;">Impacted Workflows</div>
+                            <div style="font-size:1.4rem; font-weight:700; color:#ef4444;" id="blastWfCount">0</div>
+                        </div>
+                        <div style="background:#090e1a; padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                            <div style="font-size:0.75rem; color:#94a3b8;">Impacted Test Suites</div>
+                            <div style="font-size:1.4rem; font-weight:700; color:#f59e0b;" id="blastTestCount">0</div>
+                        </div>
+                        <div style="background:#090e1a; padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                            <div style="font-size:0.75rem; color:#94a3b8;">Dependent Source Files</div>
+                            <div style="font-size:1.4rem; font-weight:700; color:#38bdf8;" id="blastFilesCount">0</div>
+                        </div>
+                        <div style="background:#090e1a; padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                            <div style="font-size:0.75rem; color:#94a3b8;">External Dependencies</div>
+                            <div style="font-size:1.4rem; font-weight:700; color:#a855f7;" id="blastDepsCount">0</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="card-title">Cascading Propagation Chains in FalkorDB</div>
+                        <div id="blastChainsList" style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Supply Chain & DevSecOps Audit -->
+        <div id="tab-supply" class="tab-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>🛡️ Supply Chain & GitHub Actions Security Audit</span>
+                    <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">DevSecOps Graph Intelligence</span>
+                </div>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.25rem;">
+                    ImpactGraph evaluates all external GitHub Actions and dependencies in FalkorDB, detecting floating branch tags, outdated action versions, and unpinned dependencies across CI pipelines.
+                </p>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                    <div style="display:flex; gap:1rem; align-items:center;">
+                        <span style="font-size:0.9rem; font-weight:600;">Repository Security Posture:</span>
+                        <span id="supplyPostureBadge" class="badge" style="background:rgba(16, 185, 129, 0.2); color:#34d399; font-size:0.85rem; padding:0.3rem 0.8rem;">STRONG</span>
+                    </div>
+                    <button class="btn-view-code" onclick="loadSupplyChainAudit()">🔄 Refresh Audit</button>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:1rem; margin-bottom:1.5rem;">
+                    <div style="background:#090e1a; padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                        <div style="font-size:0.75rem; color:#94a3b8;">Total Audited Dependencies</div>
+                        <div style="font-size:1.4rem; font-weight:700; color:#38bdf8;" id="supplyTotalCount">...</div>
+                    </div>
+                    <div style="background:#090e1a; padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                        <div style="font-size:0.75rem; color:#94a3b8;">Immutable SHA Pinned (Hardened)</div>
+                        <div style="font-size:1.4rem; font-weight:700; color:#10b981;" id="supplyPinnedCount">...</div>
+                    </div>
+                    <div style="background:#090e1a; padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                        <div style="font-size:0.75rem; color:#94a3b8;">Unpinned / Floating Tags (Risk)</div>
+                        <div style="font-size:1.4rem; font-weight:700; color:#f59e0b;" id="supplyUnpinnedCount">...</div>
+                    </div>
+                </div>
+
+                <div style="max-height: 420px; overflow-y: auto;">
+                    <table class="data-table" id="supplyTable">
+                        <thead>
+                            <tr>
+                                <th>Action / Dependency</th>
+                                <th>Security Risk Assessment</th>
+                                <th>Workflows Using It</th>
+                                <th>Referencing Files</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplyBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: Cypher Console -->
         <div id="tab-cypher" class="tab-content">
             <div class="card">
                 <div class="card-title">
@@ -485,7 +629,7 @@ UI_HTML = """<!DOCTYPE html>
                     <label>Cypher Query:</label>
                     <textarea id="cypherInput" style="min-height: 100px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">MATCH (e:Evidence)-[r:REFERENCES]->(ref:Evidence) RETURN e.source, type(r), ref.source LIMIT 10</textarea>
                 </div>
-                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
                     <button class="btn-view-code" onclick="setCypherQuery('MATCH (r:Repository)-[:HAS_EVIDENCE]->(e:Evidence) RETURN r.id, count(e) AS file_count')">Repository Files</button>
                     <button class="btn-view-code" onclick="setCypherQuery('MATCH (e:Evidence)-[r:REFERENCES]->(ref:Evidence) RETURN e.source, type(r), ref.source LIMIT 10')">Cross-File References</button>
                     <button class="btn-view-code" onclick="setCypherQuery('MATCH (e:Evidence)-[:USES_DEPENDENCY]->(d:Dependency) RETURN e.source, d.name, d.type LIMIT 10')">Dependencies</button>
@@ -508,16 +652,63 @@ UI_HTML = """<!DOCTYPE html>
             </div>
         </div>
 
-        <!-- TAB 3: MCP Tools -->
+        <!-- TAB 5: MCP Tools & Live Playground -->
         <div id="tab-mcp" class="tab-content">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="card-title">
+                    <span>🔌 Model Context Protocol (MCP) Live Playground</span>
+                    <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">JSON-RPC 2.0 Client Runner</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    Test and verify any of ImpactGraph's 10 MCP tools live in the browser using the official JSON-RPC 2.0 protocol.
+                </p>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">
+                    <!-- Playground Runner Form -->
+                    <div style="background:#090e1a; padding:1.25rem; border-radius:10px; border:1px solid var(--border);">
+                        <div class="form-group">
+                            <label>Select MCP Tool:</label>
+                            <select id="mcpToolSelect" onchange="onMCPToolSelectChange()">
+                                <option value="graph_blast_radius">graph_blast_radius (Impact Propagation)</option>
+                                <option value="graph_supply_chain_audit">graph_supply_chain_audit (DevSecOps Audit)</option>
+                                <option value="agent_drill_down_chat">agent_drill_down_chat (Conversational Q&A)</option>
+                                <option value="graph_centrality">graph_centrality (Degree Centrality Hubs)</option>
+                                <option value="graph_traverse_neighborhood">graph_traverse_neighborhood (Multi-Hop)</option>
+                                <option value="graph_shortest_path">graph_shortest_path (Shortest Path)</option>
+                                <option value="graph_memory_recall">graph_memory_recall (Cross-Session Memory)</option>
+                                <option value="graph_query">graph_query (Direct Cypher Runner)</option>
+                                <option value="graph_get_subgraph">graph_get_subgraph (Visual Subgraph)</option>
+                                <option value="agent_investigate_claim">agent_investigate_claim (Autonomous Agent)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>JSON Arguments:</label>
+                            <textarea id="mcpToolArgs" style="font-family:'JetBrains Mono'; font-size:0.8rem; min-height:120px;">{
+  "repository": "fastapi/fastapi",
+  "target_source": "scripts/docs.py"
+}</textarea>
+                        </div>
+
+                        <button class="btn-submit" style="margin:0; width:100%;" onclick="runMCPPlayground()">▶ Send MCP JSON-RPC Request</button>
+                    </div>
+
+                    <!-- Playground Response Display -->
+                    <div style="background:#090e1a; padding:1.25rem; border-radius:10px; border:1px solid var(--border); display:flex; flex-direction:column;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                            <span style="font-size:0.8rem; font-weight:600; color:#94a3b8;">JSON-RPC 2.0 Response:</span>
+                            <span id="mcpPlaygroundElapsed" style="font-size:0.75rem; color:#34d399; font-family:monospace;"></span>
+                        </div>
+                        <pre id="mcpPlaygroundResponse" style="flex:1; background:#040711; padding:0.75rem; border-radius:6px; color:#38bdf8; font-size:0.75rem; overflow:auto; max-height:240px; margin:0;">// Select a tool and click 'Send MCP JSON-RPC Request' to test.</pre>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-title">
-                    <span>Model Context Protocol (MCP) Server</span>
-                    <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">JSON-RPC 2.0 Active</span>
+                    <span>Registered MCP Tool Manifest (10 Tools)</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">Standard tools/list Endpoint</span>
                 </div>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-                    ImpactGraph natively implements the official Model Context Protocol (MCP). External AI assistants (Cursor, Claude Desktop, Antigravity) can connect via stdio (<code style="color:#60a5fa;">python backend/mcp_server.py</code>) or HTTP POST (<code style="color:#60a5fa;">/mcp</code>).
-                </p>
                 <div id="mcpToolsList"></div>
             </div>
         </div>
@@ -608,8 +799,11 @@ UI_HTML = """<!DOCTYPE html>
             document.getElementById(tabId).classList.add('active');
             event.target.classList.add('active');
 
+            const currentRepo = document.getElementById('ownerInput').value + '/' + document.getElementById('repoInput').value;
             if (tabId === 'tab-mcp') loadMCPTools();
-            if (tabId === 'tab-centrality') fetchCentrality(document.getElementById('ownerInput').value + '/' + document.getElementById('repoInput').value);
+            if (tabId === 'tab-centrality') fetchCentrality(currentRepo);
+            if (tabId === 'tab-blast') runBlastRadiusAnalysis();
+            if (tabId === 'tab-supply') loadSupplyChainAudit();
         }
 
         // Graph Canvas Simulation & Zoom/Pan
@@ -1210,6 +1404,215 @@ UI_HTML = """<!DOCTYPE html>
             document.getElementById('repoInput').value = repo;
             document.getElementById('claimInput').value = claim;
         }
+
+        // Conversational Drill-Down
+        function setDrillDownQuestion(q) {
+            document.getElementById('drillDownQuery').value = q;
+        }
+
+        async function submitDrillDown() {
+            const query = document.getElementById('drillDownQuery').value.trim();
+            if (!query) return;
+
+            const owner = document.getElementById('ownerInput').value.trim();
+            const repo = document.getElementById('repoInput').value.trim();
+            const repository = `${owner}/${repo}`;
+
+            const box = document.getElementById('drillDownAnswerBox');
+            const txt = document.getElementById('drillDownAnswerText');
+            const src = document.getElementById('drillDownSource');
+            box.style.display = 'block';
+            txt.textContent = 'Agent traversing FalkorDB graph context and querying reasoning model...';
+
+            try {
+                const res = await fetch('/api/chat/drill-down', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ repository, query })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    src.textContent = `Agent Response (Grounding: ${data.source}):`;
+                    txt.textContent = data.answer || 'No answer generated.';
+                } else {
+                    txt.textContent = 'Failed to get answer from agent.';
+                }
+            } catch (err) {
+                txt.textContent = 'Error: ' + err;
+            }
+        }
+
+        // Blast Radius & Cascading Impact
+        function setBlastTarget(target) {
+            document.getElementById('blastTargetInput').value = target;
+            runBlastRadiusAnalysis();
+        }
+
+        async function runBlastRadiusAnalysis() {
+            const owner = document.getElementById('ownerInput').value.trim();
+            const repo = document.getElementById('repoInput').value.trim();
+            const repository = `${owner}/${repo}`;
+            const source = document.getElementById('blastTargetInput').value.trim();
+            if (!source) return;
+
+            const resDiv = document.getElementById('blastResults');
+            resDiv.style.display = 'block';
+
+            try {
+                const res = await fetch(`/api/graph/blast-radius?repository=${encodeURIComponent(repository)}&source=${encodeURIComponent(source)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('blastScore').textContent = data.severity_score;
+                    document.getElementById('blastWfCount').textContent = data.affected_workflows.length;
+                    document.getElementById('blastTestCount').textContent = data.affected_tests.length;
+                    document.getElementById('blastFilesCount').textContent = data.affected_files.length;
+                    document.getElementById('blastDepsCount').textContent = data.external_dependencies.length;
+
+                    const title = document.getElementById('blastSeverityTitle');
+                    const desc = document.getElementById('blastSeverityDesc');
+                    const banner = document.getElementById('blastSeverityBanner');
+
+                    title.textContent = data.severity_level + ' BLAST RADIUS';
+                    if (data.severity_level === 'CRITICAL') {
+                        banner.style.background = '#450a0a';
+                        banner.style.borderColor = '#ef4444';
+                        desc.textContent = `Directly breaks ${data.affected_workflows.length} core CI/CD workflows and automated test suites.`;
+                    } else if (data.severity_level === 'HIGH') {
+                        banner.style.background = '#422006';
+                        banner.style.borderColor = '#f59e0b';
+                        desc.textContent = `Impacts multiple dependent source modules and tests.`;
+                    } else {
+                        banner.style.background = '#064e3b';
+                        banner.style.borderColor = '#10b981';
+                        desc.textContent = `Isolated file with minimal cascading risk across the repository.`;
+                    }
+
+                    const chainsList = document.getElementById('blastChainsList');
+                    chainsList.innerHTML = '';
+                    if (data.propagation_chains && data.propagation_chains.length > 0) {
+                        data.propagation_chains.forEach(ch => {
+                            const d = document.createElement('div');
+                            d.style.fontFamily = "'JetBrains Mono', monospace";
+                            d.style.fontSize = "0.82rem";
+                            d.style.padding = "0.5rem 0.75rem";
+                            d.style.background = "#090e1a";
+                            d.style.border = "1px solid var(--border)";
+                            d.style.borderRadius = "6px";
+                            d.style.color = "#38bdf8";
+                            d.textContent = ch;
+                            chainsList.appendChild(d);
+                        });
+                    } else {
+                        chainsList.innerHTML = '<span style="color:#94a3b8; font-size:0.85rem;">No cascading dependent chains found in FalkorDB for this file.</span>';
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Supply Chain Security Audit
+        async function loadSupplyChainAudit() {
+            const owner = document.getElementById('ownerInput').value.trim();
+            const repo = document.getElementById('repoInput').value.trim();
+            const repository = `${owner}/${repo}`;
+
+            try {
+                const res = await fetch(`/api/graph/supply-chain?repository=${encodeURIComponent(repository)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('supplyTotalCount').textContent = data.total_dependencies;
+                    document.getElementById('supplyPinnedCount').textContent = data.pinned_sha_count;
+                    document.getElementById('supplyUnpinnedCount').textContent = data.unpinned_count;
+
+                    const badge = document.getElementById('supplyPostureBadge');
+                    badge.textContent = data.security_posture;
+                    if (data.security_posture === 'STRONG') {
+                        badge.style.background = 'rgba(16, 185, 129, 0.2)';
+                        badge.style.color = '#34d399';
+                        badge.style.border = '1px solid #10b981';
+                    } else {
+                        badge.style.background = 'rgba(245, 158, 11, 0.2)';
+                        badge.style.color = '#fbbf24';
+                        badge.style.border = '1px solid #f59e0b';
+                    }
+
+                    const tbody = document.getElementById('supplyBody');
+                    tbody.innerHTML = '';
+                    (data.dependencies || []).forEach(dep => {
+                        const tr = document.createElement('tr');
+                        const riskColor = dep.risk_level.includes('CRITICAL') ? '#ef4444' : (dep.risk_level.includes('MEDIUM') ? '#f59e0b' : '#10b981');
+                        tr.innerHTML = `
+                            <td style="font-family:'JetBrains Mono'; color:#38bdf8; font-weight:600;">${escapeHtml(dep.name)}</td>
+                            <td><span style="color:${riskColor}; font-weight:600; font-size:0.8rem;">${escapeHtml(dep.risk_level)}</span></td>
+                            <td><span style="font-weight:700;">${dep.used_in.length}</span> workflow(s)</td>
+                            <td style="font-size:0.75rem; color:#94a3b8; font-family:'JetBrains Mono';">${escapeHtml(dep.used_in.slice(0, 3).join(', '))}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // MCP Playground
+        const MCP_TOOL_DEFAULTS = {
+            "graph_blast_radius": { "repository": "fastapi/fastapi", "target_source": "scripts/docs.py" },
+            "graph_supply_chain_audit": { "repository": "pallets/flask" },
+            "agent_drill_down_chat": { "repository": "fastapi/fastapi", "query": "Why does build-docs.yml reference scripts/docs.py?" },
+            "graph_centrality": { "repository": "fastapi/fastapi" },
+            "graph_traverse_neighborhood": { "start_source": ".github/workflows/build-docs.yml", "max_hops": 2 },
+            "graph_shortest_path": { "source_path": ".github/workflows/build-docs.yml", "target_path": "tests/test_local_docs.py" },
+            "graph_memory_recall": { "repository": "fastapi/fastapi", "query": "documentation build" },
+            "graph_query": { "cypher": "MATCH (r:Repository)-[:HAS_EVIDENCE]->(e:Evidence) RETURN r.id, count(e) LIMIT 5", "params": {} },
+            "graph_get_subgraph": { "repository": "fastapi/fastapi", "max_nodes": 30 },
+            "agent_investigate_claim": { "owner": "fastapi", "repo": "fastapi", "claim": "This project uses GitHub Actions to automate its documentation build." }
+        };
+
+        function onMCPToolSelectChange() {
+            const sel = document.getElementById('mcpToolSelect').value;
+            const defArgs = MCP_TOOL_DEFAULTS[sel] || {};
+            document.getElementById('mcpToolArgs').value = JSON.stringify(defArgs, null, 2);
+        }
+
+        async function runMCPPlayground() {
+            const toolName = document.getElementById('mcpToolSelect').value;
+            let args = {};
+            try {
+                args = JSON.parse(document.getElementById('mcpToolArgs').value);
+            } catch (err) {
+                alert("Invalid JSON in arguments: " + err);
+                return;
+            }
+
+            const t0 = performance.now();
+            const resBox = document.getElementById('mcpPlaygroundResponse');
+            resBox.textContent = "Executing tool via MCP JSON-RPC 2.0 protocol...";
+
+            try {
+                const res = await fetch('/mcp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: "2.0",
+                        id: Date.now(),
+                        method: "tools/call",
+                        params: {
+                            name: toolName,
+                            arguments: args
+                        }
+                    })
+                });
+                const elapsed = (performance.now() - t0).toFixed(1);
+                document.getElementById('mcpPlaygroundElapsed').textContent = `${elapsed} ms`;
+                const data = await res.json();
+                resBox.textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                resBox.textContent = "Error executing MCP tool: " + err;
+            }
+        }
+
 
         fetchStats();
         resizeCanvas();

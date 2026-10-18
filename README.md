@@ -114,9 +114,23 @@ Each investigation produces an explainable step-by-step trace:
 
 ---
 
-## 5. Important Cypher Queries & Graph Algorithms
+### 5. Important Cypher Queries & Graph Algorithms
 
-### 1. Multi-Hop Neighborhood Traversal (2-Hop & 3-Hop Chains)
+#### 1. Architectural Blast Radius & Cascading Impact
+```cypher
+MATCH (r:Repository {id: $repo_id})-[:HAS_EVIDENCE]->(target:Evidence)
+WHERE target.source = $target_source
+MATCH (downstream:Evidence)-[ref:REFERENCES]->(target)
+RETURN downstream.source, downstream.evidence_type, type(ref), ref.type
+```
+
+#### 2. Supply Chain & DevSecOps Dependency Exposure
+```cypher
+MATCH (r:Repository {id: $repo_id})-[:HAS_EVIDENCE]->(e:Evidence)-[:USES_DEPENDENCY]->(d:Dependency)
+RETURN e.source AS workflow, d.name AS dependency_name, d.type AS dependency_type
+```
+
+#### 3. Multi-Hop Neighborhood Traversal (2-Hop & 3-Hop Chains)
 ```cypher
 MATCH (e:Evidence {source: $start_source})
 OPTIONAL MATCH (e)-[r1:REFERENCES]->(e2:Evidence)
@@ -125,7 +139,7 @@ OPTIONAL MATCH (e)-[d1:USES_DEPENDENCY]->(dep:Dependency)
 RETURN e.source, e2.source, e3.source, dep.name, dep.type
 ```
 
-### 2. Architecture Centrality & Critical Hub Detection
+#### 4. Architecture Centrality & Critical Hub Detection
 ```cypher
 MATCH (r:Repository {id: $repo_id})-[:HAS_EVIDENCE]->(e:Evidence)
 OPTIONAL MATCH (e)-[out_r:REFERENCES]->()
@@ -141,7 +155,7 @@ ORDER BY centrality_score DESC
 LIMIT 10
 ```
 
-### 3. Cross-Session Memory Recall
+#### 5. Cross-Session Memory Recall
 ```cypher
 MATCH (r:Repository {id: $repo_id})-[:HAS_CLAIM]->(c:Claim)<-[:EVALUATED]-(i:Investigation)
 WHERE i.verdict IN ['supported', 'partially_supported', 'contradicted']
@@ -150,29 +164,23 @@ ORDER BY i.timestamp DESC
 LIMIT 5
 ```
 
-### 4. Shortest Execution Path
-```cypher
-MATCH (e1:Evidence {source: $source_path})
-MATCH (e2:Evidence {source: $target_path})
-MATCH p = shortestPath((e1)-[:REFERENCES*1..4]-(e2))
-RETURN [n IN nodes(p) | n.source] AS path_nodes,
-       [r IN relationships(p) | type(r)] AS path_rels
-```
-
 ---
 
-## 6. Model Context Protocol (MCP) Integration
+## 6. Model Context Protocol (MCP) Integration & Interactive Playground
 
-ImpactGraph natively implements the **Model Context Protocol (MCP)** specification:
+ImpactGraph natively implements the official **Model Context Protocol (MCP)** specification:
 
-### Exposed MCP Tools
-1. `graph_query`: Execute read-only Cypher queries against FalkorDB.
-2. `graph_traverse_neighborhood`: Multi-hop radius exploration.
-3. `graph_shortest_path`: Compute shortest relationship paths between files.
-4. `graph_centrality`: Detect core architecture hubs and bottlenecks.
-5. `graph_memory_recall`: Retrieve prior verified claims across sessions.
-6. `agent_investigate_claim`: Run the full autonomous ReAct investigation loop.
-7. `graph_get_subgraph`: Retrieve visual node-link data.
+### Exposed MCP Tools (10 Native Tools)
+1. `graph_blast_radius`: Compute cascading architectural impact and blast radius if a file/component is modified.
+2. `graph_supply_chain_audit`: Perform an automated DevSecOps supply-chain audit across GitHub Actions and dependencies.
+3. `agent_drill_down_chat`: Conversational graph-guided reasoning tool answering follow-up questions.
+4. `graph_query`: Execute read-only Cypher queries against FalkorDB.
+5. `graph_traverse_neighborhood`: Multi-hop radius exploration across references and dependencies.
+6. `graph_shortest_path`: Compute shortest relationship paths between files.
+7. `graph_centrality`: Detect core architecture hubs and bottlenecks using degree centrality.
+8. `graph_memory_recall`: Retrieve prior verified claims across sessions.
+9. `agent_investigate_claim`: Run the full autonomous ReAct investigation loop.
+10. `graph_get_subgraph`: Retrieve visual node-link data for canvas rendering.
 
 ### Connecting via Stdio (Cursor / Claude Desktop / Antigravity)
 Add this to your MCP configuration file (`claude_desktop_config.json` or Cursor MCP settings):
@@ -251,7 +259,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-### Step 3: Run the Test Suite (24/24 Passing)
+### Step 3: Run the Test Suite (26/26 Passing)
 ```bash
 pytest -o pythonpath=backend backend/tests
 ```
@@ -283,10 +291,11 @@ AI coding assistance (Google Antigravity / Gemini) was utilized during the devel
 - [x] **Track Selected:** Agents That Act on Connected Data
 - [x] **Mandatory Technology:** FalkorDB graph engine central to retrieval and reasoning
 - [x] **Multi-Hop Reasoning:** Demonstrated with multi-hop reference chains
-- [x] **Graph Queries & Algorithms as Tools:** Centrality, Shortest Path, Neighborhood Traversal
-- [x] **Model Context Protocol (MCP):** Implemented via `backend/mcp_server.py` and `/mcp`
+- [x] **Graph Queries & Algorithms as Tools:** Centrality, Shortest Path, Neighborhood Traversal, Blast Radius, Supply Chain Audit
+- [x] **Model Context Protocol (MCP):** Implemented 10 tools via `backend/mcp_server.py`, `/mcp`, and live UI playground
 - [x] **Cross-Session Memory:** Stores and recalls prior investigations in FalkorDB
-- [x] **Interactive Dashboard:** Force-directed network canvas and ReAct trace visualizer
-- [x] **Automated Tests:** 24/24 passing pytest tests
+- [x] **Conversational Drill-Down:** Follow-up Q&A grounded in live graph relationships
+- [x] **Interactive Dashboard:** Force-directed network canvas, ReAct trace visualizer, and live MCP playground
+- [x] **Automated Tests:** 26/26 passing pytest tests
 - [x] **Security:** Untrusted code is never executed; secrets excluded via `.env.example`
 - [x] **Public Source Code:** Clean repository on GitHub

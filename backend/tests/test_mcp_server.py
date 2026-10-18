@@ -71,3 +71,44 @@ def test_mcp_tools_call_neighborhood():
     parsed = json.loads(content_text)
     assert "chains" in parsed
     assert parsed["count"] > 0
+
+
+def test_mcp_tools_call_blast_radius():
+    req = {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "tools/call",
+        "params": {
+            "name": "graph_blast_radius",
+            "arguments": {
+                "repository": "fastapi/fastapi",
+                "target_source": "scripts/docs.py",
+            },
+        },
+    }
+    resp = handle_json_rpc(req)
+    content_text = resp["result"]["content"][0]["text"]
+    parsed = json.loads(content_text)
+    assert parsed["target_source"] == "scripts/docs.py"
+    assert parsed["severity_score"] > 0
+    assert len(parsed["affected_workflows"]) > 0
+
+
+def test_mcp_tools_call_supply_chain():
+    req = {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "tools/call",
+        "params": {
+            "name": "graph_supply_chain_audit",
+            "arguments": {
+                "repository": "pallets/flask",
+            },
+        },
+    }
+    resp = handle_json_rpc(req)
+    content_text = resp["result"]["content"][0]["text"]
+    parsed = json.loads(content_text)
+    assert "security_posture" in parsed
+    assert parsed["total_dependencies"] > 0
+
